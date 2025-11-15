@@ -139,7 +139,7 @@ class KhachHangTab(tk.Frame):
         tenkh_str = "\n- ".join(tenkh_list)
         if not messagebox.askyesno("Xác nhận", 
             f"Bạn có chắc muốn xóa {len(makh_list)} khách hàng đã chọn?\n- {tenkh_str}\n\n"
-            "(Thao tác này sẽ xóa TẤT CẢ Hóa đơn và Tài khoản đăng nhập của họ).", 
+            "(Thao tác này sẽ xóa TẤT CẢ Hóa đơn của họ).", 
             parent=self, icon='warning'):
             return
             

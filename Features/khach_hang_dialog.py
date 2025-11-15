@@ -120,15 +120,25 @@ class CustomerFormDialog(tk.Toplevel):
         gioitinh = self.gioitinh.get().strip()
         quequan = self.quequan.get().strip()
 
-        # Kiểm tra dữ liệu (Validate)
         if not hoten:
             messagebox.showwarning("Thiếu", "Họ tên không được để trống.", parent=self)
+            self.hoten.focus_set()
             return
         if not sdt:
             messagebox.showwarning("Thiếu", "SĐT không được để trống.", parent=self)
+            self.sdt.focus_set()
             return
         if not (sdt.isdigit() and len(sdt) == 10):
             messagebox.showwarning("Sai", "SĐT phải là 10 chữ số.", parent=self)
+            self.sdt.focus_set()
+            return
+        if not gioitinh:
+            messagebox.showwarning("Thiếu", "Giới tính không được để trống.", parent=self)
+            self.gioitinh.focus_set()
+            return
+        if not quequan:
+            messagebox.showwarning("Thiếu", "Quê quán không được để trống.", parent=self)
+            self.quequan.focus_set()
             return
         
         cur = self.conn.cursor()
@@ -172,5 +182,4 @@ class CustomerFormDialog(tk.Toplevel):
             self.conn.rollback()
             messagebox.showerror("Lỗi CSDL", str(e), parent=self)
         finally:
-            # Không đóng connection ở đây, vì self.conn là của dialog
             pass
