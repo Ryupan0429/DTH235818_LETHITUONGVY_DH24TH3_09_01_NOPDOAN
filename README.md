@@ -21,7 +21,7 @@ Xây dựng một ứng dụng Desktop (GUI) bằng Python (Tkinter) và SQL Ser
 ### 1. Cài đặt thư viện
 Mở Terminal (CMD hoặc PowerShell) và chạy lệnh sau để cài đặt các thư viện cần thiết:
 ```bash
-pip install pyodbc tkcalendar pandas numpy matplotlib
+pip install pyodbc tkcalendar pandas numpy matplotlib python-docx
 ```
 ### 2. Phục hồi Cơ sở dữ liệu (CSDL)
 Đây là bước quan trọng nhất. Bạn phải khôi phục CSDL từ file backup .bak đi kèm.
