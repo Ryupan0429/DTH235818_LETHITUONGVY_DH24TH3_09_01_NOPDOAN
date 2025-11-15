@@ -4,7 +4,6 @@ from db import get_connection
 from Modules.ui_style import create_button, BG_TOOLBAR
 from tkcalendar import DateEntry
 from datetime import datetime, date
-
 from Modules.utils import create_treeview_frame, setup_sortable_treeview, reset_sort_headings
 from Features.chi_tiet import InvoiceDetailWindow 
 from Features.phieu_nhap_dialog import AddImportDialog 
@@ -141,7 +140,6 @@ class PhieuNhapTab(tk.Frame):
             
             select_cols = ",".join(DISPLAY_COLS)
             
-            # *** SỬA ĐỔI: Thay đổi ORDER BY ***
             sql = f"SELECT {select_cols} FROM dbo.PhieuNhap {where_sql} ORDER BY SoPN ASC"
             
             cur.execute(sql, params)

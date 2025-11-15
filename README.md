@@ -7,86 +7,111 @@
 -   **Lớp:** DH24TH3
 -   **Môn:** Chuyên đề Python, Trường Đại học An Giang
 
-## Mục tiêu
-Xây dựng ứng dụng quản lý kho và bán hàng cho cửa hàng thuốc nông dược, sử dụng Python (Tkinter) và SQL Server. Ứng dụng tập trung vào việc quản lý tồn kho (nhập/xuất) và quản lý khách hàng, có giao diện đồ họa (GUI) thân thiện và phân chia chức năng rõ ràng cho Quản trị viên (Admin) và Khách hàng (Customer).
+## Mục tiêu dự án
+Xây dựng một ứng dụng Desktop (GUI) bằng Python (Tkinter) và SQL Server để quản lý toàn diện nghiệp vụ tại một cửa hàng nông dược.
 
-## Tính năng chính
-
-Ứng dụng được chia thành hai phân hệ chính:
-
-### 1. Phân hệ Quản trị viên (Admin)
--   **Quản lý Sản phẩm:** Thêm, Sửa (bao gồm cả Đơn giá), Xóa, Lọc (theo Phân loại, Giá) và Tìm kiếm (Mã/Tên/Công dụng). Hỗ trợ chức năng **thay đổi giá hàng loạt** theo phần trăm (%).
--   **Quản lý Khách hàng:** Thêm, Sửa, Xóa, Lọc (tự động theo Quê quán) và Tìm kiếm (Mã/Tên/SĐT).
--   **Quản lý Phiếu Nhập (Nhập hàng):** Tạo phiếu nhập kho. Khi nhập, số lượng tồn kho và đơn giá bán (Giá bán = Giá nhập \* 1.3, làm tròn) của sản phẩm sẽ được **tự động cập nhật** qua Trigger CSDL.
--   **Quản lý Hóa đơn (Bán hàng):** Tạo hóa đơn bán hàng cho khách (có thể thêm khách hàng mới trực tiếp). Khi bán, số lượng tồn kho của sản phẩm sẽ **tự động bị trừ**.
--   **Báo cáo Doanh thu:** Xem biểu đồ doanh thu và bảng thống kê linh hoạt theo **Ngày**, **Tháng**, hoặc **Năm**.
-
-### 2. Phân hệ Khách hàng (Customer)
--   **Quản lý Hồ sơ:** Xem và tự cập nhật thông tin cá nhân (Họ tên, SĐT, Giới tính, Quê quán) và thay đổi mật khẩu.
--   **Tra cứu sản phẩm:** Xem, lọc, và tìm kiếm danh mục sản phẩm (bao gồm cả tồn kho).
--   **Giỏ hàng & Mua hàng:** Giao diện cho phép khách hàng tự thêm sản phẩm vào giỏ (với tính năng kiểm tra tồn kho) và tiến hành "Đặt hàng" (tự tạo hóa đơn).
--   **Lịch sử giao dịch:** Xem lại danh sách các hóa đơn đã mua và xem chi tiết.
-
-## Công nghệ sử dụng
--   **Ngôn ngữ:** Python 3.x
--   **Giao diện (GUI):** Tkinter (và `ttk`)
--   **Cơ sở dữ liệu:** SQL Server
--   **Thư viện:** `pyodbc` (kết nối CSDL), `tkcalendar` (chọn ngày), `matplotlib` (vẽ biểu đồ), `pandas` & `numpy` (xử lý dữ liệu báo cáo).
-
-## Cấu trúc Cơ sở dữ liệu
-Ứng dụng sử dụng CSDL SQL Server (`QuanLyNongDuoc`) với 7 bảng chính:
--   `dbo.SanPhamNongDuoc`: Lưu thông tin sản phẩm, tồn kho và giá bán.
--   `dbo.KhachHang`: Lưu thông tin khách hàng (bao gồm Giới tính, Quê quán) và tổng chi tiêu.
--   `dbo.PhieuNhap`: Lưu thông tin phiếu nhập kho (đầu vào).
--   `dbo.ChiTietPhieuNhap`: Chi tiết các sản phẩm trong phiếu nhập.
--   `dbo.HoaDon`: Lưu thông tin hóa đơn (đầu ra).
--   `dbo.ChiTietHoaDon`: Chi tiết các sản phẩm trong hóa đơn.
--   `dbo.Users`: Lưu tài khoản đăng nhập (Admin và Customer).
-
-Hệ thống sử dụng **Triggers** trong SQL Server để tự động hóa hoàn toàn logic nghiệp vụ:
--   Tự động cập nhật `SoLuong` (tồn kho) và `DonGia` (bán) khi nhập hàng.
--   Tự động cập nhật (trừ) `SoLuong` (tồn kho) khi bán hàng hoặc hoàn kho khi xóa hóa đơn.
--   Tự động cập nhật `TongGT` (Hóa đơn) và `TongChiTieu` (Khách hàng) khi dữ liệu thay đổi.
+Ứng dụng tập trung vào phân hệ Quản trị viên (Admin), cung cấp các công cụ mạnh mẽ để quản lý kho hàng (Phiếu nhập), bán hàng (Hóa đơn), quản lý đối tác (Khách hàng) và theo dõi tình hình tài chính (Báo cáo Thu Chi) một cách trực quan.
 
 ## Hướng dẫn cài đặt và chạy
 
 ### Yêu cầu
-1.  Python 3.x và `pip`.
-2.  Microsoft SQL Server (ví dụ: bản Express) và SQL Server Management Studio (SSMS).
-3.  **Microsoft ODBC Driver 17 for SQL Server**. (Yêu cầu bắt buộc).
+1.  **Python 3.x** và `pip`.
+2.  **Microsoft SQL Server** (ví dụ: bản Express) và SQL Server Management Studio (SSMS).
+3.  **Microsoft ODBC Driver 17 for SQL Server** (Bắt buộc).
 
 ### 1. Cài đặt thư viện
-Cài đặt các thư viện cần thiết cho ứng dụng:
+Mở Terminal (CMD hoặc PowerShell) và chạy lệnh sau để cài đặt các thư viện cần thiết:
 ```bash
 pip install pyodbc tkcalendar pandas numpy matplotlib
 ```
-2. Phục hồi Cơ sở dữ liệu (CSDL)
-Mở SSMS (SQL Server Management Studio).
+### 2. Phục hồi Cơ sở dữ liệu (CSDL)
+Đây là bước quan trọng nhất. Bạn phải khôi phục CSDL từ file backup .bak đi kèm.
 
-Trong thư mục /CSDL của dự án, tìm tệp QuanLyNongDuoc.bak.
+1. Mở SSMS (SQL Server Management Studio) và kết nối vào Server của bạn.
 
-Phục hồi (Restore) tệp .bak này để tạo CSDL QuanLyNongDuoc với toàn bộ cấu trúc bảng, triggers và dữ liệu mẫu.
+2. Trong thư mục /Backup của dự án, tìm tệp có đuôi .bak (Vd: QuanLyNongDuoc.bak.)
 
-3. Cấu hình ứng dụng
+3. Trong SSMS, nhấp chuột phải vào thư mục Databases -> Restore Database....
+
+4. Trong cửa sổ mới:
+
+    -Chọn Device và nhấp vào nút ... (ba chấm).
+
+    -Nhấn Add, duyệt đến tệp QuanLyNongDuoc.bak và nhấn OK.
+
+    -Nhấn OK một lần nữa để xác nhận file.
+
+5. Quan trọng: Ở menu bên trái của cửa sổ Restore, chọn mục Options.
+
+6. Đánh dấu vào ô "Close existing connections to destination database". (Việc này để tránh CSDL bị kẹt ở trạng thái "Restoring").
+
+7. Nhấn OK để bắt đầu khôi phục.
+
+### 3. Cấu hình kết nối
 Mở tệp db.py (nằm ở thư mục gốc) và cập nhật chính xác các thông số sau để khớp với SQL Server của bạn:
 
 ```Python
-
 SERVER_NAME = r'TUONGVY\SQLEXPRESS' # Tên Server SQL của bạn
 DATABASE_NAME = 'QuanLyNongDuoc'
-USERNAME = 'sa'
+USERNAME = 'sa' # User id của bạn
 PASSWORD = '' # Mật khẩu của bạn
 ```
-4. Chạy ứng dụng
-Chạy ứng dụng bằng cách thực thi tệp login.py.
+### 4. Chạy ứng dụng
+#### Cách 1: Chạy bằng file thực thi (EXE)
+
+Chạy tệp QLCHNongDuoc.exe (nếu đã được đóng gói).
+Nếu chưa thì dùng sau để đóng gói ứng dụng thành file.exe
+```Python
+
+pyinstaller --onefile --windowed --name "QLCHNongDuoc" --paths=. --hidden-import="tkcalendar" --hidden-import="pandas" --hidden-import="numpy" --hidden-import="matplotlib.pyplot" login.py
+```
+#### Cách 2: Chạy bằng mã nguồn Python
+Thực thi tệp login.py từ Terminal:
 
 ```Bash
 
 python login.py
 ```
-Tài khoản Admin: admin / 123
+Tài khoản Admin mặc định: Quanli01 / 123
 
-Tài khoản Customer: (Ví dụ) KH0001 / 001 (Mật khẩu là 3 số cuối của Mã Khách Hàng).
+## Các chức năng của ứng dụng:
+1. Quản lý Hóa Đơn (Bán hàng)
+- Thêm Hóa Đơn: Giao diện trực quan gồm 2 bảng (Kho hàng và Giỏ hàng). Tự động kiểm tra và trừ tồn kho tạm thời khi thêm vào giỏ. Hỗ trợ thêm khách hàng mới ngay từ giao diện.
+- Xóa Hóa Đơn: Hỗ trợ chọn và xóa nhiều hóa đơn cùng lúc. Tồn kho sản phẩm sẽ được tự động hoàn trả (Trigger CSDL).
+- Xem Chi Tiết: Nháy đúp vào hóa đơn để xem chi tiết.
+- Tìm kiếm & Lọc: Tìm theo Mã HĐ/Mã KH và lọc theo khoảng ngày.
 
-Liên hệ
+2. Quản lý Phiếu Nhập (Mua hàng)
+- Thêm Phiếu Nhập: Giao diện 2 bảng (Sản phẩm và Phiếu nhập). Tự động cập nhật tồn kho tạm thời để theo dõi.
+- Xóa Phiếu Nhập: Hỗ trợ chọn và xóa nhiều phiếu nhập. Tồn kho sản phẩm sẽ bị tự động trừ đi (Trigger CSDL).
+- Tự động cập nhật: Khi Lưu phiếu nhập, CSDL tự động cộng tồn kho.
+- Tính và cập nhật giá bán mới (Giá bán = Giá nhập * 1.3).
+- Xem Chi Tiết: Nháy đúp vào phiếu nhập để xem chi tiết.
+- Tìm kiếm & Lọc: Tìm theo Số PN/Nguồn nhập và lọc theo khoảng ngày.
+
+3. Quản lý Sản Phẩm
+- Thêm/Sửa/Xóa:
++ Thêm: Thêm sản phẩm mới (tồn kho và giá bán mặc định là 0).
++ Sửa: Cho phép sửa thông tin mô tả và Đơn giá bán của sản phẩm.
++ Xóa: Hỗ trợ xóa nhiều sản phẩm (nếu sản phẩm chưa phát sinh giao dịch).
++ Đổi giá hàng loạt: Chọn nhiều sản phẩm và cập nhật giá đồng loạt theo phần trăm (%).
++ Tìm kiếm & Lọc: Tìm kiếm (Mã/Tên/Công dụng), Lọc tự động (Phân loại) và Lọc theo khoảng giá.
+
+4. Quản lý Khách Hàng
+- Thêm/Sửa/Xóa: Quản lý thông tin khách hàng (Họ tên, SĐT, Giới tính, Quê quán). Hỗ trợ xóa nhiều.
+- Xem Lịch sử Giao dịch: Nháy đúp vào một khách hàng để mở cửa sổ mới hiển thị toàn bộ lịch sử hóa đơn của khách hàng đó.
+- Tìm kiếm & Lọc: Tìm kiếm (Mã/Tên/SĐT) và Lọc tự động (Quê quán).
+
+5. Báo cáo Thu Chi
+- Thay thế cho báo cáo Doanh thu, hiển thị so sánh:
+- Tổng Thu: Tiền bán hàng (từ Hóa Đơn).
+Tổng Chi: Tiền nhập hàng (từ Phiếu Nhập).
+- Biểu đồ cột: Trực quan hóa Thu/Chi và Lợi nhuận (Lợi nhuận được tô màu xanh/đỏ trong bảng).
+- Lọc linh hoạt: Xem báo cáo theo Ngày, Tháng, hoặc Năm.
+
+6. Tính năng chung
+- Sao lưu (Backup): Cho phép người dùng lưu một bản sao lưu (.bak) của CSDL ra thư mục /Backup bất cứ lúc nào.
+- Giao diện: Hỗ trợ kéo-chọn nhiều dòng trên tất cả các bảng. Hỗ trợ sắp xếp (sort) dữ liệu khi nhấn vào tiêu đề cột.
+
+### Liên hệ
 Email: vy_dth235818@student.agu.edu.vn
