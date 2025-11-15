@@ -77,6 +77,7 @@ Tài khoản Admin mặc định: Quanli01 / 123
 1. Quản lý Hóa Đơn (Bán hàng)
 - Thêm Hóa Đơn: Giao diện trực quan gồm 2 bảng (Kho hàng và Giỏ hàng). Tự động kiểm tra và trừ tồn kho tạm thời khi thêm vào giỏ. Hỗ trợ thêm khách hàng mới ngay từ giao diện.
 - Xóa Hóa Đơn: Hỗ trợ chọn và xóa nhiều hóa đơn cùng lúc. Tồn kho sản phẩm sẽ được tự động hoàn trả (Trigger CSDL).
+- Xuất Hóa Đơn: Cho phép xuất hóa đơn đã chọn ra tệp tin Microsoft Word (.docx).
 - Xem Chi Tiết: Nháy đúp vào hóa đơn để xem chi tiết.
 - Tìm kiếm & Lọc: Tìm theo Mã HĐ/Mã KH và lọc theo khoảng ngày.
 
@@ -85,6 +86,7 @@ Tài khoản Admin mặc định: Quanli01 / 123
 - Xóa Phiếu Nhập: Hỗ trợ chọn và xóa nhiều phiếu nhập. Tồn kho sản phẩm sẽ bị tự động trừ đi (Trigger CSDL).
 - Tự động cập nhật: Khi Lưu phiếu nhập, CSDL tự động cộng tồn kho.
 - Tính và cập nhật giá bán mới (Giá bán = Giá nhập * 1.3).
+- Xuất Phiếu Nhập: Cho phép xuất phiếu nhập đã chọn ra tệp tin Microsoft Word (.docx).
 - Xem Chi Tiết: Nháy đúp vào phiếu nhập để xem chi tiết.
 - Tìm kiếm & Lọc: Tìm theo Số PN/Nguồn nhập và lọc theo khoảng ngày.
 
@@ -99,6 +101,7 @@ Tài khoản Admin mặc định: Quanli01 / 123
 4. Quản lý Khách Hàng
 - Thêm/Sửa/Xóa: Quản lý thông tin khách hàng (Họ tên, SĐT, Giới tính, Quê quán). Hỗ trợ xóa nhiều.
 - Xem Lịch sử Giao dịch: Nháy đúp vào một khách hàng để mở cửa sổ mới hiển thị toàn bộ lịch sử hóa đơn của khách hàng đó.
+- Top 3 Chi tiêu: Hiển thị 3 khách hàng có tổng chi tiêu cao nhất.
 - Tìm kiếm & Lọc: Tìm kiếm (Mã/Tên/SĐT) và Lọc tự động (Quê quán).
 
 5. Báo cáo Thu Chi
@@ -110,7 +113,7 @@ Tổng Chi: Tiền nhập hàng (từ Phiếu Nhập).
 
 6. Tính năng chung
 - Sao lưu (Backup): Cho phép người dùng lưu một bản sao lưu (.bak) của CSDL ra thư mục /Backup bất cứ lúc nào.
-- Giao diện: Hỗ trợ kéo-chọn nhiều dòng trên tất cả các bảng. Hỗ trợ sắp xếp (sort) dữ liệu khi nhấn vào tiêu đề cột.
+- Giao diện: Hỗ trợ chọn nhiều dòng trên tất cả các bảng bằng cách kết hợp chuột và nút Shift hoặc Crtl. Hỗ trợ sắp xếp (sort) dữ liệu khi nhấn vào tiêu đề cột.
 
 ### Liên hệ
 Email: vy_dth235818@student.agu.edu.vn

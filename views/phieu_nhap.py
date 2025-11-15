@@ -7,8 +7,8 @@ from datetime import datetime, date
 from Modules.utils import create_treeview_frame, setup_sortable_treeview, reset_sort_headings
 from Features.chi_tiet import InvoiceDetailWindow 
 from Features.phieu_nhap_dialog import AddImportDialog 
+from Features.xuat_file import export_import_bill_to_word
 
-# Cấu hình cột
 VI_PHIEUNHAP = {
     "SoPN": "Số Phiếu Nhập",
     "NgayNhap": "Ngày Nhập",
@@ -37,6 +37,7 @@ class PhieuNhapTab(tk.Frame):
         
         create_button(action_frame, "Thêm", command=self._on_add_import, kind="primary", width=10).pack(side="left", padx=(6,4))
         create_button(action_frame, "Xóa", command=self._delete_import, kind="danger", width=10).pack(side="left", padx=4)
+        create_button(action_frame, "Xuất Phiếu Nhập", command=self._on_export_import, kind="accent", width=14).pack(side="left", padx=(4,10))
 
         filter_frame = tk.Frame(top, bg=BG_TOOLBAR)
         filter_frame.pack(side="right")
@@ -63,6 +64,22 @@ class PhieuNhapTab(tk.Frame):
         self.tree.bind("<Double-1>", self._on_double_click) 
         
         setup_sortable_treeview(self.tree, VI_PHIEUNHAP, self._sort_state)
+
+    def _on_export_import(self):
+        """Xuất phiếu nhập đã chọn ra file Word."""
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("Xuất file", "Vui lòng chọn một phiếu nhập để xuất.")
+            return
+        if len(sel) > 1:
+            messagebox.showinfo("Xuất file", "Vui lòng chỉ chọn một phiếu nhập mỗi lần xuất.")
+            return
+            
+        try:
+            sopn = self.tree.item(sel[0], "values")[DISPLAY_COLS.index("SoPN")]
+            export_import_bill_to_word(self, sopn)
+        except (ValueError, IndexError):
+            messagebox.showerror("Lỗi", "Không thể xác định Số Phiếu Nhập.")
 
     def _on_add_import(self):
         """Mở cửa sổ thêm phiếu nhập mới."""

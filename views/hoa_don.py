@@ -4,10 +4,10 @@ from db import get_connection
 from Modules.ui_style import create_button, BG_TOOLBAR
 from tkcalendar import DateEntry
 from datetime import datetime, date
-
 from Modules.utils import create_treeview_frame, setup_sortable_treeview, reset_sort_headings
 from Features.chi_tiet import InvoiceDetailWindow 
 from Features.hoa_don_dialog import AddInvoiceDialog
+from Features.xuat_file import export_invoice_to_word
 
 # Cấu hình cột
 VI_HOADON = {
@@ -37,6 +37,7 @@ class HoaDonTab(tk.Frame):
         
         create_button(action_frame, "Thêm", command=self._on_add_invoice, kind="primary", width=10).pack(side="left", padx=(6,4))
         create_button(action_frame, "Xóa", command=self._delete_invoice, kind="danger", width=10).pack(side="left", padx=4)
+        create_button(action_frame, "Xuất Hóa Đơn", command=self._on_export_invoice, kind="accent", width=12).pack(side="left", padx=(4,10))
 
         filter_frame = tk.Frame(top, bg=BG_TOOLBAR)
         filter_frame.pack(side="right")
@@ -63,6 +64,22 @@ class HoaDonTab(tk.Frame):
         self.tree.bind("<Double-1>", self._on_double_click)
         
         setup_sortable_treeview(self.tree, VI_HOADON, self._sort_state)
+
+    def _on_export_invoice(self):
+        """Xuất hóa đơn đã chọn ra file Word."""
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("Xuất file", "Vui lòng chọn một hóa đơn để xuất.")
+            return
+        if len(sel) > 1:
+            messagebox.showinfo("Xuất file", "Vui lòng chỉ chọn một hóa đơn mỗi lần xuất.")
+            return
+            
+        try:
+            mahd = self.tree.item(sel[0], "values")[DISPLAY_COLS.index("MaHD")]
+            export_invoice_to_word(self, mahd)
+        except (ValueError, IndexError):
+            messagebox.showerror("Lỗi", "Không thể xác định Mã HĐ.")
 
     def _on_add_invoice(self):
         """Mở cửa sổ thêm hóa đơn mới."""

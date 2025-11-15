@@ -34,7 +34,9 @@ class KhachHangTab(tk.Frame):
         
         create_button(action_frame, "Thêm", command=self._on_add, kind="primary", width=10).pack(side="left", padx=(6,4))
         create_button(action_frame, "Sửa", command=self._on_edit, kind="secondary", width=10).pack(side="left", padx=4)
-        create_button(action_frame, "Xóa", command=self._on_delete, kind="danger", width=10).pack(side="left", padx=(4,10))
+        create_button(action_frame, "Xóa", command=self._on_delete, kind="danger", width=10).pack(side="left", padx=4)
+        create_button(action_frame, "Top 3 Chi Tiêu", command=self._show_top_3, kind="accent", width=12).pack(side="left", padx=(4,10))
+
 
         filter_frame = tk.Frame(top, bg=BG_TOOLBAR)
         filter_frame.pack(side="right") 
@@ -62,6 +64,33 @@ class KhachHangTab(tk.Frame):
         self.tree.bind("<Double-1>", self._on_double_click)
         
         setup_sortable_treeview(self.tree, VI_KHACHHANG, self._sort_state)
+
+    def _show_top_3(self):
+        """Hiển thị Top 3 khách hàng chi tiêu nhiều nhất."""
+        conn = None
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            
+            sql = "SELECT TOP 3 MaKH, TenKH, TongChiTieu FROM dbo.KhachHang ORDER BY TongChiTieu DESC"
+            cur.execute(sql)
+            rows = cur.fetchall()
+            conn.close()
+            
+            if not rows:
+                messagebox.showinfo("Top 3 Khách hàng", "Không có dữ liệu chi tiêu.", parent=self)
+                return
+            
+            result_str = "Top 3 Khách hàng Chi tiêu cao nhất:\n\n"
+            for i, row in enumerate(rows):
+                result_str += f"{i+1}. {row.TenKH} ({row.MaKH})\n"
+                result_str += f"   Tổng chi tiêu: {row.TongChiTieu:,.0f} VNĐ\n\n"
+            
+            messagebox.showinfo("Top 3 Khách hàng", result_str, parent=self)
+
+        except Exception as e:
+            if conn: conn.close()
+            messagebox.showerror("Lỗi", f"Không thể lấy dữ liệu Top 3:\n{e}", parent=self)
 
     def _on_add(self):
         CustomerFormDialog(self, makh=None)

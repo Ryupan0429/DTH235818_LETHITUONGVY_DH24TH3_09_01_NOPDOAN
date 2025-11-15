@@ -33,7 +33,7 @@ def style_ttk(root):
     root.option_add("*Font", FONT_NORMAL)
 
     s = ttk.Style()
-    s.theme_use('vista') # Dùng theme 'vista' hoặc 'xpnative' cho đẹp
+    s.theme_use('vista')
     
     s.configure(".", font=FONT_NORMAL)
     
