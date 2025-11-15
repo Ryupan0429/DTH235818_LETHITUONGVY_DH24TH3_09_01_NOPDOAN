@@ -1,17 +1,14 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import datetime
-import pandas as pd
-import numpy as np 
+import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import ticker
-
-from db import get_connection
-from Features.bao_cao_doanh_thu import get_revenue_data 
+from Features.bao_cao_doanh_thu import get_thu_chi_data 
 from Modules.ui_style import BG_MAIN, BG_TOOLBAR, create_button
 
-class DoanhThuTab(tk.Frame):
+class ThuChiTab(tk.Frame):
     def __init__(self, parent, role):
         super().__init__(parent, bg=BG_MAIN)
         self.role = role
@@ -70,7 +67,7 @@ class DoanhThuTab(tk.Frame):
         tree_frame = tk.Frame(content_frame)
         tree_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
 
-        self.tree = ttk.Treeview(tree_frame, columns=("Ky", "DoanhThu", "ThayDoi"), show="headings")
+        self.tree = ttk.Treeview(tree_frame, columns=("Ky", "Thu", "Chi", "LoiNhuan"), show="headings")
         vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
         self.tree.configure(yscroll=vsb.set, xscroll=hsb.set)
@@ -82,10 +79,16 @@ class DoanhThuTab(tk.Frame):
         tree_frame.grid_columnconfigure(0, weight=1)
         
         self.tree.heading("Ky", text="Kỳ") 
-        self.tree.heading("DoanhThu", text="Doanh thu")
-        self.tree.heading("ThayDoi", text="Tăng trưởng (%)")
+        self.tree.heading("Thu", text="Tổng Thu (Bán)")
+        self.tree.heading("Chi", text="Tổng Chi (Nhập)")
+        self.tree.heading("LoiNhuan", text="Lợi Nhuận")
+        
+        self.tree.column("Thu", anchor="e")
+        self.tree.column("Chi", anchor="e")
+        self.tree.column("LoiNhuan", anchor="e")
 
     def _load_selectors(self):
+        """Tải danh sách các năm/tháng vào Combobox."""
         current_year = datetime.datetime.now().year
         current_month = datetime.datetime.now().month
         
@@ -97,6 +100,7 @@ class DoanhThuTab(tk.Frame):
         self._on_mode_change() 
 
     def _on_mode_change(self):
+        """Ẩn/Hiện bộ chọn Tháng khi đổi chế độ."""
         mode = self.view_mode.get()
         if mode == "Daily":
             self.month_label.pack(side="left", padx=(10,2))
@@ -106,6 +110,7 @@ class DoanhThuTab(tk.Frame):
             self.month_cb.pack_forget()
 
     def load_data(self):
+        """Tải dữ liệu thu/chi, cập nhật cả bảng và biểu đồ."""
         mode = self.view_mode.get()
         
         try:
@@ -113,77 +118,92 @@ class DoanhThuTab(tk.Frame):
             if mode == 'Daily':
                 month = int(self.month_cb.get())
                 param = (year, month) 
-                title = f"Doanh thu các ngày trong Tháng {month}/{year}"
+                title = f"Thu Chi các ngày trong Tháng {month}/{year}"
                 period_label = "Ngày"
             elif mode == 'Monthly':
                 param = year
-                title = f"Doanh thu các tháng trong Năm {year}"
+                title = f"Thu Chi các tháng trong Năm {year}"
                 period_label = "Tháng"
-            else:
+            else: # Yearly
                 param = year
-                title = f"Doanh thu 5 năm (kết thúc {year})"
+                title = f"Thu Chi 5 năm (kết thúc {year})"
                 period_label = "Năm"
                 
         except ValueError:
             messagebox.showerror("Lỗi", "Năm/Tháng không hợp lệ.")
             return
 
-        df = get_revenue_data(param, mode) 
+        df = get_thu_chi_data(param, mode) 
         if df.empty:
-            messagebox.showinfo("Thông báo", "Không có dữ liệu doanh thu cho kỳ này.", parent=self)
+            messagebox.showinfo("Thông báo", "Không có dữ liệu thu chi cho kỳ này.", parent=self)
             self.ax.clear()
             self.canvas.draw()
             self.tree.delete(*self.tree.get_children())
             return
             
-        df["Prev"] = df["Revenue"].shift(1) 
-        prev_no_zero = df["Prev"].replace(0, np.nan) 
-        df["ThayDoi"] = ((df["Revenue"] - df["Prev"]) / prev_no_zero) * 100
-        df["ThayDoi"] = df["ThayDoi"].replace([float('inf'), float('-inf')], np.nan) 
-
-        self._update_chart(df, title, period_label)
+        df["LoiNhuan"] = df["Thu"] - df["Chi"]
+        self._update_chart(df, title, period_label, mode)
         self._update_treeview(df, period_label)
 
-    def _update_chart(self, df, title, period_label):
+    def _update_chart(self, df, title, period_label, mode):
+        """Vẽ lại biểu đồ cột (Thu và Chi)."""
         self.ax.clear()
         
         periods = df["Period"]
-        revenue = df["Revenue"]
+        thu = df["Thu"]
+        chi = df["Chi"]
         
-        self.ax.bar(periods, revenue, color="#4CAF50", width=0.6)
-        
-        self.ax.set_title(title, fontsize=12)
-        self.ax.set_ylabel("Doanh thu (VNĐ)")
-        self.ax.set_xlabel(period_label)
-        
-        if len(periods) > 12: # Nếu là chế độ 'Daily' (Nhiều nhãn)
-            # Tự động chọn 10 nhãn đẹp nhất và là số nguyên
-            self.ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=10))
-        else: # Nếu là 'Monthly' hoặc 'Yearly'
-            # Hiển thị tất cả các nhãn
-            self.ax.set_xticks(periods)
-            self.ax.get_xaxis().set_major_formatter(ticker.FormatStrFormatter('%d'))
+        x = np.arange(len(periods))  # Vị trí của các nhãn
+        width = 0.35  # Độ rộng của cột
 
+        # Vẽ cột Thu
+        rects1 = self.ax.bar(x - width/2, thu, width, label='Tổng Thu (Bán)', color='#4CAF50')
+        # Vẽ cột Chi
+        rects2 = self.ax.bar(x + width/2, chi, width, label='Tổng Chi (Nhập)', color='#F44336')
+
+        self.ax.set_title(title, fontsize=12)
+        self.ax.set_ylabel("Tổng tiền (VNĐ)")
+        self.ax.set_xlabel(period_label)
+        self.ax.legend()
+        
         self.ax.get_yaxis().set_major_formatter(
             ticker.FuncFormatter(lambda x, p: format(int(x), ','))
         )
-        
+    
+        # Đặt vị trí (index) và nhãn (ngày/tháng/năm)
+        self.ax.set_xticks(x)
+        self.ax.set_xticklabels(periods)
+
+        if mode == 'Daily':
+            # Nếu là xem theo Ngày (có 30+ nhãn), tự động giảm số lượng nhãn
+            self.ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=10, integer=True))
+        else:
+            # Nếu là Tháng (12) hoặc Năm (5), hiển thị tất cả
+            self.ax.get_xaxis().set_major_formatter(ticker.FormatStrFormatter('%d'))
+
         self.fig.tight_layout()
         self.canvas.draw()
 
     def _update_treeview(self, df, period_label):
+        """Cập nhật dữ liệu cho bảng Treeview."""
         self.tree.heading("Ky", text=period_label) 
         self.tree.delete(*self.tree.get_children())
         
         for index, row in df.iterrows():
-            doanh_thu_str = f"{row['Revenue']:,.0f}"
+            thu_str = f"{row['Thu']:,.0f}"
+            chi_str = f"{row['Chi']:,.0f}"
+            loinhuan_str = f"{row['LoiNhuan']:,.0f}"
             
-            thay_doi_str = "—"
-            if pd.notna(row['ThayDoi']): 
-                thay_doi_str = f"{row['ThayDoi']:.2f}%"
+            # Tô màu cho Lợi nhuận
+            tag = "profit" if row['LoiNhuan'] >= 0 else "loss"
 
             self.tree.insert("", "end", values=(
                 int(row['Period']), 
-                doanh_thu_str,
-                thay_doi_str
-            ))
+                thu_str,
+                chi_str,
+                loinhuan_str
+            ), tags=(tag,))
+        
+        # Cấu hình màu sắc
+        self.tree.tag_configure("profit", foreground="green")
+        self.tree.tag_configure("loss", foreground="red")

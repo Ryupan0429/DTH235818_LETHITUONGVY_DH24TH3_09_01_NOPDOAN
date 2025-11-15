@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 from Modules.ui_style import center, FONT_NORMAL, create_button
 
 class PriceChangeDialog(tk.Toplevel):

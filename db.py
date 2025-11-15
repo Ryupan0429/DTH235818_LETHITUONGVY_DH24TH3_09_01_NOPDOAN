@@ -33,8 +33,6 @@ def get_connection():
             messagebox.showerror("Lỗi Đăng Nhập", "Sai UID hoặc Password. Vui lòng kiểm tra file db.py.")
         elif sqlstate == '08001':
              messagebox.showerror("Lỗi Kết Nối", f"Không tìm thấy Server: {SERVER_NAME}. Vui lòng kiểm tra file db.py.")
-        elif sqlstate == '42000':
-             messagebox.showerror("Lỗi CSDL", f"Không tìm thấy Database: {DATABASE_NAME}. Bạn đã chạy file generate.py hoặc Restore CSDL chưa?")
         else:
             messagebox.showerror("Lỗi CSDL", f"Lỗi kết nối: {ex}")
         return None

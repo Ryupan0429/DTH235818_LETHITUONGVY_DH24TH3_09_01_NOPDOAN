@@ -1,27 +1,9 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 from db import get_connection
-from datetime import datetime, date
+from Modules.utils import create_treeview_frame
+from Modules.ui_style import center
 
-try:
-    from Modules.utils import create_treeview_frame
-except ImportError:
-    # Fallback (phòng trường hợp)
-    def create_treeview_frame(parent):
-        area = tk.Frame(parent)
-        area.pack(fill="both", expand=True, padx=8, pady=8)
-        tree = ttk.Treeview(area, show="headings")
-        vsb = ttk.Scrollbar(area, orient="vertical", command=tree.yview)
-        hsb = ttk.Scrollbar(area, orient="horizontal", command=tree.xview)
-        tree.configure(yscroll=vsb.set, xscroll=hsb.set)
-        tree.grid(row=0, column=0, sticky="nsew")
-        vsb.grid(row=0, column=1, sticky="ns")
-        hsb.grid(row=1, column=0, sticky="ew")
-        area.grid_rowconfigure(0, weight=1)
-        area.grid_columnconfigure(0, weight=1)
-        return area, tree
-
-# Tiêu đề tiếng Việt
 VI_DETAIL = {
     "MaSP": "Mã SP",
     "TenSP": "Tên SP",
@@ -43,10 +25,15 @@ class InvoiceDetailWindow(tk.Toplevel):
         
         title_prefix = "Chi tiết Hóa đơn" if self.is_invoice else "Chi tiết Phiếu Nhập"
         self.title(f"{title_prefix} {mahd_or_sopn}")
-        self.geometry("750x450")
+        
+        self.width = 750
+        self.height = 450
+        self.geometry(f"{self.width}x{self.height}")
 
         self._build_ui()
         self._load_details()
+
+        center(self, self.width, self.height)
 
         self.transient(parent)
         self.grab_set()
@@ -57,7 +44,6 @@ class InvoiceDetailWindow(tk.Toplevel):
         self.infof = tk.Frame(self)
         self.infof.pack(fill="x", padx=10, pady=(10, 5))
 
-        # Các label này sẽ được cấu hình trong _load_details
         self.lbl_info1 = tk.Label(self.infof, text="...", font=("Segoe UI", 10, "bold"))
         self.lbl_info1.pack(side="left", padx=(0, 12))
         
@@ -80,7 +66,6 @@ class InvoiceDetailWindow(tk.Toplevel):
             cur = conn.cursor()
 
             if self.is_invoice:
-                # --- XỬ LÝ HÓA ĐƠN (BÁN) ---
                 cur.execute("""
                     SELECT H.MaKH, H.NgayGD, H.TongGT, K.TenKH 
                     FROM dbo.HoaDon H
@@ -95,12 +80,10 @@ class InvoiceDetailWindow(tk.Toplevel):
                     self.lbl_date.config(text=f"Ngày GD: {header_row.NgayGD.strftime('%d/%m/%Y')}")
                     self.lbl_total.config(text=f"Tổng GT: {header_row.TongGT:,.0f} đồng")
 
-                # Tải chi tiết
                 cur.execute("SELECT MaSP, TenSP, SoLuong, DVTinh, DonGia, ThanhTien FROM dbo.ChiTietHoaDon WHERE MaHD = ?", 
                             (self.mahd_or_sopn,))
                 
             else:
-                # --- XỬ LÝ PHIẾU NHẬP (MUA) ---
                 cur.execute("""
                     SELECT NgayNhap, NguoiNhap, NguonNhap, TongGGT
                     FROM dbo.PhieuNhap
@@ -114,17 +97,14 @@ class InvoiceDetailWindow(tk.Toplevel):
                     self.lbl_date.config(text=f"Ngày Nhập: {header_row.NgayNhap.strftime('%d/%m/%Y')}")
                     self.lbl_total.config(text=f"Tổng Nhập: {header_row.TongGGT:,.0f} đồng")
                 
-                # Tải chi tiết
                 cur.execute("SELECT MaSP, TenSP, SoLuong, DVTinh, DonGia, ThanhTien FROM dbo.ChiTietPhieuNhap WHERE SoPN = ?", 
                             (self.mahd_or_sopn,))
 
-            # --- Hiển thị dữ liệu chi tiết lên Treeview (Dùng chung) ---
             rows = cur.fetchall()
             if not rows:
                 messagebox.showinfo("Thông báo", "Không có chi tiết cho phiếu này.", parent=self)
                 return
             
-            # Lấy tên cột từ cursor (MaSP, TenSP, ...)
             cols = [d[0] for d in cur.description]
             self.tree["columns"] = cols
 

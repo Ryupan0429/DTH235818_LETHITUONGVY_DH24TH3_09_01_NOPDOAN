@@ -49,7 +49,7 @@ class CustomerFormDialog(tk.Toplevel):
 
         self.title("Thêm Khách hàng" if not self.makh else "Cập nhật Khách hàng")
         self.width = 400
-        self.height = 300 # Tăng chiều cao cho 2 trường mới
+        self.height = 300 
         
         self.transient(parent)
         self.grab_set()

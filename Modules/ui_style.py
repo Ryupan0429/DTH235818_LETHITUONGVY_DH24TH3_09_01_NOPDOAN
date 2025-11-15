@@ -1,4 +1,4 @@
-from tkinter import ttk, font
+from tkinter import ttk
 
 # ===================================================================
 # FONT CHỮ

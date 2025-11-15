@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 from db import get_connection
 from Modules.ui_style import create_button, BG_TOOLBAR
 from tkcalendar import DateEntry

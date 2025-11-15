@@ -95,15 +95,10 @@ def login_screen():
                 return
             
             from main_app import open_main_admin
-            from Customer.customer_app import open_main_customer
             
             role = row[0]
             root.destroy() 
-            
-            if role.lower() == 'customer':
-                open_main_customer(role=role, username=user)
-            else:
-                open_main_admin(role=role, username=user)
+            open_main_admin(role=role, username=user)
 
         except Exception as e:
             messagebox.showerror("Lỗi", str(e))
