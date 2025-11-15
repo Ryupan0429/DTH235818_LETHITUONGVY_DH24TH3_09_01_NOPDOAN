@@ -1,4 +1,3 @@
-import tkinter as tk
 from tkinter import ttk, font
 
 # ===================================================================
@@ -12,7 +11,6 @@ FONT_NORMAL = (FONT_FAMILY, FONT_SIZE_NORMAL)
 FONT_BOLD = (FONT_FAMILY, FONT_SIZE_NORMAL, "bold")
 FONT_TITLE = (FONT_FAMILY, FONT_SIZE_TITLE, "bold")
 FONT_H1 = (FONT_FAMILY, 16, "bold")
-FONT_ICON = (FONT_FAMILY, 11) 
 
 # ===================================================================
 # MÀU SẮC
@@ -24,6 +22,7 @@ BTN_DANGER_BG = "#f7c6c6"
 BTN_SECONDARY_BG = "#d0d0d0"
 BTN_ACCENT_BG = "#e0cfff"
 
+# =Dùng màu của ttk thay vì định nghĩa màu riêng
 # ===================================================================
 # HÀM ÁP DỤNG STYLE
 # ===================================================================
@@ -34,6 +33,7 @@ def style_ttk(root):
     root.option_add("*Font", FONT_NORMAL)
 
     s = ttk.Style()
+    s.theme_use('vista') # Dùng theme 'vista' hoặc 'xpnative' cho đẹp
     
     s.configure(".", font=FONT_NORMAL)
     
@@ -50,42 +50,44 @@ def style_ttk(root):
     s.configure("TNotebook.Tab", 
                 font=FONT_BOLD, 
                 padding=(10, 5))
+    
+    # Định nghĩa các style cho Button
+    s.configure("Primary.TButton", font=FONT_BOLD, background=BTN_PRIMARY_BG)
+    s.map("Primary.TButton", background=[('active', '#9cd475')])
+    
+    s.configure("Danger.TButton", font=FONT_NORMAL, background=BTN_DANGER_BG)
+    s.map("Danger.TButton", background=[('active', '#f5a8a8')])
+    
+    s.configure("Accent.TButton", font=FONT_NORMAL, background=BTN_ACCENT_BG)
+    s.map("Accent.TButton", background=[('active', '#c9a3ff')])
 
 # ===================================================================
 # HÀM TIỆN ÍCH
 # ===================================================================
 
-def create_button(parent, text, command, kind="primary", width=None, font=None):
+def create_button(parent, text, command, kind="secondary", width=None, style=None):
     """
-    Tạo Button với style đơn giản (dùng Tk Button).
+    Tạo Button (sử dụng ttk.Button).
     """
     
-    if font is None:
-        font = FONT_NORMAL
-
-    colors = {
-        "primary": BTN_PRIMARY_BG,
-        "secondary": BTN_SECONDARY_BG,
-        "danger": BTN_DANGER_BG,
-        "accent": BTN_ACCENT_BG
+    style_map = {
+        "primary": "Primary.TButton",
+        "danger": "Danger.TButton",
+        "accent": "Accent.TButton",
+        "secondary": "TButton" # Mặc định của TButton
     }
     
-    btn = tk.Button(
+    style_to_use = style_map.get(kind, "TButton")
+    if style:
+        style_to_use = style
+
+    btn = ttk.Button(
         parent, 
         text=text, 
         command=command, 
-        font=font, 
-        bg=colors.get(kind, BTN_SECONDARY_BG),
-        fg="black",
-        relief="flat",
-        padx=8,  # Trả về padx
-        pady=4,  # Trả về pady
-        width=width
+        width=width,
+        style=style_to_use
     )
-    
-    btn.bind("<Enter>", lambda e: e.widget.config(relief="solid", bd=1))
-    btn.bind("<Leave>", lambda e: e.widget.config(relief="flat", bd=0))
-    
     return btn
 
 def center(win, w, h):

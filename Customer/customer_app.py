@@ -1,19 +1,18 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from db import get_connection
-from styles.ui_style import (
-    style_ttk, create_button, BG_MAIN, BG_TOOLBAR, BTN_DANGER_BG, 
-    center, FONT_TITLE, FONT_NORMAL, FONT_H1, FONT_ICON 
+from Modules.ui_style import (
+    style_ttk, create_button, BG_MAIN, BG_TOOLBAR, 
+    center, FONT_TITLE, FONT_NORMAL, FONT_H1
 )
-from styles.treeview_utils import create_treeview_frame, auto_fit_columns
-from services.finance import get_discount_rate, get_next_rank_info
-from features.invoice_detail_window import InvoiceDetailWindow
+from Modules.utils import create_treeview_frame
+from Features.chi_tiet import InvoiceDetailWindow
 from datetime import datetime, date
-from features.change_password_dialog import ChangePasswordDialog
-from views.customer_thuoc import CustomerThuocTab
+from Features.doi_mat_khau import ChangePasswordDialog
 from tkcalendar import DateEntry
-from features.customer_dialog import TINH_THANH_VN
-from views.customer_shop import ShopTab
+from Customer.customer_mua_hang import ShopTab
+from Customer.customer_san_pham import CustomerSanPhamTab
+from Features.khach_hang_dialog import TINH_THANH_VN
 
 # ===================================================================
 # TAB HỒ SƠ (PROFILE)
@@ -40,50 +39,35 @@ class ProfileTab(tk.Frame):
         header_frame = tk.Frame(center_frame, bg="white")
         header_frame.pack(pady=10)
 
-        self.rank_icon = tk.Label(header_frame, text="👑", font=("Segoe UI", 30), bg="white")
-        self.rank_icon.pack(side="left", padx=(0, 10))
-        self.rank_label = tk.Label(header_frame, text="Hạng: ...", font=FONT_H1, bg="white")
-        self.rank_label.pack(side="left")
-
-        progress_frame = tk.Frame(center_frame, bg="white")
-        progress_frame.pack(fill="x", padx=20, pady=(5, 10))
-        
-        self.progress_label = tk.Label(progress_frame, text="Tiến trình lên hạng:", font=FONT_NORMAL, bg="white")
-        self.progress_label.pack(anchor="w")
-        
-        self.progress_bar = ttk.Progressbar(progress_frame, orient="horizontal", length=300, mode="determinate")
-        self.progress_bar.pack(fill="x", pady=2)
-        
-        self.progress_text = tk.Label(progress_frame, text=".../... VNĐ", font=FONT_NORMAL, bg="white")
-        self.progress_text.pack(anchor="e")
-
-        self.discount_label = tk.Label(center_frame, text="Giảm giá hiện tại: 0%", font=FONT_TITLE, fg="green", bg="white")
-        self.discount_label.pack(pady=10)
+        self.welcome_label = tk.Label(header_frame, text="Hồ sơ cá nhân", font=FONT_H1, bg="white")
+        self.welcome_label.pack(side="left")
 
         form_frame = tk.Frame(center_frame, bg="white")
         form_frame.pack(pady=10, padx=20, fill="x")
 
-        fields = [("Mã KH:", "MaKH"), ("Họ Tên:", "HoTenKH"), ("SĐT:", "SDT"), ("Địa chỉ:", "DiaChi"), ("Tổng chi tiêu:", "TongChiTieu")]
+        fields = [("Mã KH:", "MaKH"), ("Họ Tên:", "TenKH"), ("SĐT:", "SDT"), 
+                  ("Giới tính:", "GioiTinh"), ("Quê quán:", "QueQuan"), ("Tổng chi tiêu:", "TongChiTieu")]
         self.entries = {}
 
         for i, (text, key) in enumerate(fields):
             tk.Label(form_frame, text=text, font=FONT_NORMAL, bg="white").grid(row=i, column=0, sticky="e", padx=5, pady=8)
             
-            if key == "DiaChi":
-                entry = ttk.Combobox(form_frame, width=38, values=TINH_THANH_VN) 
-                entry.grid(row=i, column=1, sticky="w", padx=5, pady=8)
+            if key == "QueQuan":
+                entry = ttk.Combobox(form_frame, width=38, values=TINH_THANH_VN, font=FONT_NORMAL) 
+            elif key == "GioiTinh":
+                entry = ttk.Combobox(form_frame, width=38, values=['Nam', 'Nữ', 'Khác'], font=FONT_NORMAL)
             else:
-                # Thêm màu nền khi bị vô hiệu hóa
                 entry = tk.Entry(form_frame, width=40, relief="solid", bd=1,
                                  disabledbackground="#f0f0f0", 
                                  disabledforeground="black") 
-                entry.grid(row=i, column=1, sticky="w", padx=5, pady=8)
                 
-            entry.config(state="disabled") # Bắt đầu ở trạng thái disabled
+            entry.grid(row=i, column=1, sticky="w", padx=5, pady=8)
+            entry.config(state="disabled")
             self.entries[key] = entry
 
         btn_frame = tk.Frame(center_frame, bg="white")
         btn_frame.pack(pady=20)
+        
         self.edit_button = create_button(btn_frame, "Sửa thông tin", command=self._toggle_edit, kind="secondary")
         self.edit_button.pack(side="left", padx=10)
         
@@ -92,46 +76,33 @@ class ProfileTab(tk.Frame):
         
         self.save_button = create_button(btn_frame, "Lưu thay đổi", command=self._save_profile, kind="primary")
         
-        create_button(btn_frame, "⟳", command=self.load_profile, kind="accent", font=FONT_ICON).pack(side="left", padx=10)
+        create_button(btn_frame, "Tải lại", command=self.load_profile, kind="accent").pack(side="left", padx=10)
         
     def load_profile(self):
         """Tải thông tin hồ sơ từ CSDL."""
         try:
             cur = self.conn.cursor()
             
-            cur.execute("SELECT * FROM dbo.ThongTinKhachHang WHERE MaKH = ?", (self.username,))
+            cur.execute("SELECT * FROM dbo.KhachHang WHERE MaKH = ?", (self.username,))
             row = cur.fetchone()
             if not row:
-                messagebox.showerror("Lỗi", "Không tìm thấy thông tin người dùng.")
+                messagebox.showerror("Lỗi", "Không tìm thấy thông tin người dùng.", parent=self)
                 return
 
             cols = [col[0] for col in cur.description]
             self.user_data = dict(zip(cols, row))
-            rank_from_db = self.user_data.get("ThuHang", "Đồng") 
-
-            cur.execute("SELECT SUM(TongGT) FROM dbo.HoaDonNongDuoc WHERE MaKH = ?", (self.username,))
+            
+            # Đảm bảo TongChiTieu là mới nhất (mặc dù trigger đã chạy)
+            cur.execute("SELECT SUM(TongGT) FROM dbo.HoaDon WHERE MaKH = ?", (self.username,))
             calculated_tct_row = cur.fetchone()
             tct = calculated_tct_row[0] if calculated_tct_row and calculated_tct_row[0] is not None else 0
-            
             self.user_data["TongChiTieu"] = tct 
 
-            (current_rank, next_rank, value, max_val) = get_next_rank_info(tct)
-            
-            if current_rank != rank_from_db:
-                try:
-                    cur.execute(
-                        "UPDATE dbo.ThongTinKhachHang SET ThuHang = ? WHERE MaKH = ?",
-                        (current_rank, self.username)
-                    )
-                    self.conn.commit()
-                    self.user_data["ThuHang"] = current_rank 
-                except Exception as e:
-                    print(f"Lỗi khi cập nhật hạng: {e}")
-            
             for key, entry in self.entries.items():
                 value = self.user_data.get(key)
-                entry.config(state="normal") # Chuyển sang normal để xóa/ghi
-                if key == "DiaChi":
+                entry.config(state="normal")
+                
+                if key == "QueQuan" or key == "GioiTinh":
                     entry.set(value or "")
                 else:
                     entry.delete(0, "end")
@@ -139,50 +110,31 @@ class ProfileTab(tk.Frame):
                         entry.insert(0, f"{tct or 0:,.0f} đồng")
                     else:
                         entry.insert(0, value or "")
-                entry.config(state="disabled") # Trả về state disabled (màu xám)
-            
-            rank_color = {"Đồng": "#B87333", "Bạc": "#A9A9A9", "Vàng": "#FFD700", "Bạch Kim": "#E5E4E2", "Kim Cương": "#B9F2FF"}
-            self.rank_label.config(text=f"Hạng: {current_rank}")
-            self.rank_icon.config(fg=rank_color.get(current_rank, "#B9F2FF"))
-
-            discount_rate = get_discount_rate(current_rank)
-            self.discount_label.config(text=f"Giảm giá hiện tại: {discount_rate * 100:,.0f}%")
-
-            if next_rank:
-                self.progress_label.config(text="Tiến trình lên hạng:", font=FONT_NORMAL, fg="black")
-                self.progress_bar.pack(fill="x", pady=2) 
-                self.progress_text.pack(anchor="e") 
-                
-                self.progress_bar['maximum'] = max_val
-                self.progress_bar['value'] = value 
-                self.progress_text.config(text=f"{value:,.0f} / {max_val:,.0f} đồng (lên hạng {next_rank})")
-                
-            else:
-                self.progress_bar.pack_forget()
-                self.progress_text.pack_forget()
-                self.progress_label.config(text="⭐ Khách hàng Kim Cương ⭐", font=FONT_TITLE, fg="#005a9e")
+                entry.config(state="disabled") 
 
         except Exception as e:
             messagebox.showerror("Lỗi", f"Không thể tải hồ sơ:\n{e}", parent=self)
 
     def _toggle_edit(self):
-        """Cho phép sửa Họ tên, SĐT, Địa chỉ."""
+        """Cho phép sửa các trường."""
         self.edit_button.pack_forget()
         self.save_button.pack(side="left", padx=10)
         self.pw_button.pack_forget()
 
-        self.entries["HoTenKH"].config(state="normal")
+        self.entries["TenKH"].config(state="normal")
         self.entries["SDT"].config(state="normal")
-        self.entries["DiaChi"].config(state="readonly") # Combobox dùng readonly
+        self.entries["GioiTinh"].config(state="readonly")
+        self.entries["QueQuan"].config(state="readonly")
         
-        self.entries["HoTenKH"].focus_set()
+        self.entries["TenKH"].focus_set()
 
     def _save_profile(self):
         """Lưu thông tin đã sửa vào CSDL."""
         try:
-            hoten = self.entries["HoTenKH"].get().strip()
+            hoten = self.entries["TenKH"].get().strip()
             sdt = self.entries["SDT"].get().strip()
-            diachi = self.entries["DiaChi"].get().strip()
+            gioitinh = self.entries["GioiTinh"].get().strip()
+            quequan = self.entries["QueQuan"].get().strip()
 
             if not hoten or not (sdt.isdigit() and len(sdt) == 10):
                 messagebox.showwarning("Thiếu", "Họ tên không được trống và SĐT phải là 10 chữ số.", parent=self)
@@ -190,8 +142,8 @@ class ProfileTab(tk.Frame):
 
             cur = self.conn.cursor()
             cur.execute(
-                "UPDATE dbo.ThongTinKhachHang SET HoTenKH = ?, SDT = ?, DiaChi = ? WHERE MaKH = ?",
-                (hoten, sdt, diachi, self.username)
+                "UPDATE dbo.KhachHang SET TenKH = ?, SDT = ?, GioiTinh = ?, QueQuan = ? WHERE MaKH = ?",
+                (hoten, sdt, gioitinh, quequan, self.username)
             )
             self.conn.commit()
 
@@ -199,18 +151,18 @@ class ProfileTab(tk.Frame):
             self.edit_button.pack(side="left", padx=10)
             self.pw_button.pack(side="left", padx=10)
 
-            # Trả về trạng thái vô hiệu hóa (màu xám)
-            for key in ["HoTenKH", "SDT", "DiaChi"]:
+            # Trả về trạng thái vô hiệu hóa
+            for key in ["TenKH", "SDT", "GioiTinh", "QueQuan"]:
                 self.entries[key].config(state="disabled")
 
             messagebox.showinfo("Thành công", "Đã cập nhật thông tin hồ sơ.", parent=self)
             self.load_profile()
+            self.main_app.update_welcome_title() # Cập nhật tiêu đề cửa sổ
 
         except Exception as e:
             messagebox.showerror("Lỗi", f"Không thể lưu hồ sơ:\n{e}", parent=self)
 
     def _open_change_password_dialog(self):
-        """Mở cửa sổ đổi mật khẩu."""
         ChangePasswordDialog(self, self.username)
 
 # ===================================================================
@@ -221,7 +173,7 @@ class HistoryTab(tk.Frame):
         super().__init__(parent, bg=BG_MAIN)
         self.username = username
         self.conn = get_connection()
-        self.sort_cols = ("MaHD", "NgayGD", "TongGT") 
+        self.tree = None
         self._sort_state = {}
         
         self._build_ui()
@@ -251,72 +203,26 @@ class HistoryTab(tk.Frame):
 
         create_button(toolbar, "Lọc", command=self.load_history, kind="secondary").pack(side="left", padx=6)
         create_button(toolbar, "X", command=self._clear_filters, kind="danger", width=3).pack(side="left", padx=(0,4))
-        
-        create_button(toolbar, "⟳", command=self.load_history, kind="accent", font=FONT_ICON).pack(side="left", padx=(4,0))
+        create_button(toolbar, "Tải lại", command=self.load_history, kind="accent").pack(side="left", padx=(4,0))
         
         tk.Label(self, text="Nháy đúp vào một hóa đơn để xem chi tiết.", font=FONT_NORMAL, bg=BG_MAIN).pack(padx=10, pady=5, anchor="w")
         self.area, self.tree = create_treeview_frame(self)
         self.tree.bind("<Double-1>", self._on_double_click)
         
-        self._create_tree_columns()
+        # Dùng logic sort chung
+        self.columns_info = {"MaHD": "Mã HĐ", "NgayGD": "Ngày Giao Dịch", "TongGT": "Tổng Giá Trị"}
+        from Modules.utils import setup_sortable_treeview, reset_sort_headings
+        setup_sortable_treeview(self.tree, self.columns_info, self._sort_state)
 
-    def _create_tree_columns(self):
-        self.tree["columns"] = self.sort_cols
-        
-        headings = {"MaHD": "Mã HĐ", "NgayGD": "Ngày Giao Dịch", "TongGT": "Tổng Giá Trị"}
-        for c in self.sort_cols:
-            header = headings.get(c, c)
-            self.tree.heading(c, text=header, command=lambda c=c: self._on_heading_click(c))
-            self.tree.column(c, anchor="w")
-
-    def _on_heading_click(self, col):
-        prev = self._sort_state.get(col, None)
-        new = not prev if prev is not None else False 
-        self._sort_state = {}
-        self._sort_state[col] = new
-        self._sort(col, new)
-
-    def _sort(self, col, reverse):
-        """Sắp xếp dữ liệu trong Treeview (in-memory)."""
-        data = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
-        
-        if col == 'TongGT':
-            data.sort(key=lambda t: float(t[0].replace(" đồng","").replace(",","")) if t[0] else 0, reverse=reverse)
-        elif col == 'NgayGD':
-             try:
-                data.sort(key=lambda t: datetime.strptime(t[0], '%d/%m/%Y'), reverse=reverse)
-             except ValueError:
-                print("Lỗi định dạng ngày khi sort")
-        else:
-            data.sort(key=lambda t: t[0].lower() if isinstance(t[0], str) else t[0], reverse=reverse)
-        
-        for index, (_, k) in enumerate(data):
-            self.tree.move(k, "", index)
-            
-        for c in self.sort_cols:
-            header = self.tree.heading(c, "text").split(" ")[0]
-            if c in self._sort_state:
-                header += " ▲" if not self._sort_state[c] else " ▼"
-            self.tree.heading(c, text=header, command=lambda c=c: self._on_heading_click(c))
-    
-    def _update_headings_after_load(self):
-        """Reset tất cả tiêu đề cột về trạng thái không sort."""
-        self._sort_state = {}
-        for c in self.sort_cols:
-            header = self.tree.heading(c, "text").split(" ")[0]
-            self.tree.heading(c, text=header, command=lambda c=c: self._on_heading_click(c))
-            
     def _clear_filters(self):
         self.search.delete(0, "end")
         self.date_from.delete(0, "end")
         self.date_to.delete(0, "end")
-        self._sort_state = {}
+        self._sort_state.clear()
         self.load_history()
 
     def load_history(self):
         """Tải lịch sử hóa đơn của khách hàng."""
-        current_sort = self._sort_state.copy()
-        
         try:
             for i in self.tree.get_children(): self.tree.delete(i)
 
@@ -347,30 +253,21 @@ class HistoryTab(tk.Frame):
                     return
             
             where_sql = " AND ".join(where)
-            sql = f"SELECT MaHD, NgayGD, TongGT FROM dbo.HoaDonNongDuoc WHERE {where_sql} ORDER BY NgayGD DESC"
+            # Dùng bảng Hóa Đơn
+            sql = f"SELECT MaHD, NgayGD, TongGT FROM dbo.HoaDon WHERE {where_sql} ORDER BY NgayGD DESC"
             
             cur.execute(sql, tuple(params))
             rows = cur.fetchall()
             
-            if not rows:
-                self.tree.delete(*self.tree.get_children())
-                return
-
             for r in rows:
                 vals = list(r)
                 if isinstance(vals[1], (datetime, date)):
-                    vals[1] = vals[1].strftime('%d/%m/%Y')
+                    vals[1] = vals[1].strftime('%d/%m/%Y') # Format dd/MM/yyyy
                 vals[2] = f"{vals[2]:,.0f} đồng"
                 self.tree.insert("", "end", values=tuple(vals))
             
-            auto_fit_columns(self.tree)
-            
-            if current_sort:
-                col = list(current_sort.keys())[0]
-                reverse = current_sort[col]
-                self._sort(col, reverse)
-            else:
-                self._update_headings_after_load()
+            from Modules.utils import reset_sort_headings
+            reset_sort_headings(self.tree, self.columns_info, self._sort_state)
 
         except Exception as e:
             messagebox.showerror("Lỗi", f"Không thể tải lịch sử:\n{e}", parent=self)
@@ -384,7 +281,7 @@ class HistoryTab(tk.Frame):
         if not vals: return
         
         mahd = vals[0]
-        InvoiceDetailWindow(self, mahd)
+        InvoiceDetailWindow(self, mahd) # Tái sử dụng dialog chi tiết HĐ
 
 # ===================================================================
 # CỬA SỔ CHÍNH CỦA KHÁCH HÀNG
@@ -399,9 +296,9 @@ class CustomerApp(tk.Tk):
         self.username = username
         self.user_data = self._load_user_data()
 
-        self.title(f"Chào mừng {self.user_data.get('HoTenKH', username)}!")
-        self.geometry("900x700")
-        center(self, 900, 700)
+        self.title(f"Chào mừng {self.user_data.get('TenKH', username)}!")
+        self.geometry("1100x700")
+        center(self, 1100, 700)
         self.configure(bg=BG_MAIN)
         
         self._create_header()
@@ -409,11 +306,19 @@ class CustomerApp(tk.Tk):
         
         self.protocol("WM_DELETE_WINDOW", self._handle_logout)
 
+    def update_welcome_title(self):
+        """Hàm public để ProfileTab gọi khi Tên thay đổi."""
+        self.user_data = self._load_user_data()
+        self.title(f"Chào mừng {self.user_data.get('TenKH', self.username)}!")
+        self.welcome_label.config(text=f"{self.user_data.get('TenKH', self.username)} ({self.role})")
+
+
     def _load_user_data(self):
         try:
             conn = get_connection()
             cur = conn.cursor()
-            cur.execute("SELECT * FROM dbo.ThongTinKhachHang WHERE MaKH = ?", (self.username,))
+            # Dùng bảng KhachHang
+            cur.execute("SELECT * FROM dbo.KhachHang WHERE MaKH = ?", (self.username,))
             row = cur.fetchone()
             conn.close()
             if row:
@@ -428,13 +333,14 @@ class CustomerApp(tk.Tk):
         header_frame = tk.Frame(self, bg=BG_TOOLBAR, height=40)
         header_frame.pack(fill="x")
         
-        logout_btn = tk.Button(header_frame, text="Đăng xuất", 
+        logout_btn = ttk.Button(header_frame, text="Đăng xuất", 
                                command=self._handle_logout, 
-                               bg=BTN_DANGER_BG, fg="black", font=FONT_NORMAL)
+                               style="Danger.TButton")
         logout_btn.pack(side="right", padx=10, pady=5)
 
-        tk.Label(header_frame, text=f"{self.user_data.get('HoTenKH', self.username)} ({self.role})", 
-                 font=FONT_TITLE, bg=BG_TOOLBAR).pack(side="right", padx=10, pady=5)
+        self.welcome_label = tk.Label(header_frame, text=f"{self.user_data.get('TenKH', self.username)} ({self.role})", 
+                 font=FONT_TITLE, bg=BG_TOOLBAR)
+        self.welcome_label.pack(side="right", padx=10, pady=5)
 
     def _create_notebook(self):
         notebook = ttk.Notebook(self)
@@ -443,12 +349,12 @@ class CustomerApp(tk.Tk):
         self.profile_tab = ProfileTab(notebook, self.username, self)
         self.shop_tab = ShopTab(notebook, self.username, self.user_data) 
         self.history_tab = HistoryTab(notebook, self.username)
-        self.thuoc_tab = CustomerThuocTab(notebook, self.username, self.shop_tab) 
+        self.san_pham_tab = CustomerSanPhamTab(notebook, self.username, self.shop_tab) # Dùng shop_tab
 
         notebook.add(self.profile_tab, text="👤 Hồ sơ cá nhân")
         notebook.add(self.shop_tab, text="🛒 Mua hàng")
         notebook.add(self.history_tab, text="🧾 Lịch sử giao dịch")
-        notebook.add(self.thuoc_tab, text="💊 Tra cứu thuốc") 
+        notebook.add(self.san_pham_tab, text="💊 Tra cứu sản phẩm") 
         
         def on_tab_changed(event):
             """Cập nhật dữ liệu khi chuyển tab."""

@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from db import get_connection
-from styles.ui_style import center, FONT_NORMAL, BTN_PRIMARY_BG
+from Modules.ui_style import center, FONT_NORMAL, create_button
 
 class ChangePasswordDialog(tk.Toplevel):
     def __init__(self, parent, username):
@@ -32,9 +32,8 @@ class ChangePasswordDialog(tk.Toplevel):
         btn_frame = tk.Frame(frame)
         btn_frame.grid(row=3, column=0, columnspan=2, pady=20)
 
-        tk.Button(btn_frame, text="Lưu thay đổi", command=self._save, 
-                  bg=BTN_PRIMARY_BG, font=FONT_NORMAL).pack(side="left", padx=10)
-        tk.Button(btn_frame, text="Hủy", command=self.destroy, font=FONT_NORMAL).pack(side="left", padx=10)
+        create_button(btn_frame, "Lưu thay đổi", command=self._save, kind="primary").pack(side="left", padx=10)
+        create_button(btn_frame, "Hủy", command=self.destroy, kind="secondary").pack(side="left", padx=10)
 
         self.old_pw.focus_set()
         self.wait_window(self)

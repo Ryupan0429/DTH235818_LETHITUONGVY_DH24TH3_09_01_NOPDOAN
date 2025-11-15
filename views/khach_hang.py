@@ -1,30 +1,20 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from db import get_connection
-from styles.ui_style import create_button, BG_TOOLBAR, FONT_ICON
-from styles.treeview_utils import create_treeview_frame, auto_fit_columns
-# Import dialog mới cho cả Thêm và Sửa
-from features.customer_dialog import CustomerFormDialog
-from services.finance import update_all_customer_totals
+from Modules.ui_style import create_button, BG_TOOLBAR
+from Modules.utils import create_treeview_frame, setup_sortable_treeview, reset_sort_headings
+from Features.khach_hang_dialog import CustomerFormDialog 
+from Features.lich_su_GD import CustomerHistoryDialog
 
 VI_KHACHHANG = {
     "MaKH": "Mã KH",
-    "HoTenKH": "Họ Tên",
+    "TenKH": "Họ Tên",
     "SDT": "SĐT",
-    "DiaChi": "Địa chỉ",
-    "TongChiTieu": "Tổng chi tiêu",
-    "ThuHang": "Hạng"
+    "GioiTinh": "Giới tính",
+    "QueQuan": "Quê quán",
+    "TongChiTieu": "Tổng chi tiêu"
 }
-DISPLAY_COLS = ["MaKH", "HoTenKH", "SDT", "DiaChi", "TongChiTieu", "ThuHang"]
-
-# Thêm từ điển để sort Hạng
-RANK_ORDER = {
-    "Đồng": 0,
-    "Bạc": 1,
-    "Vàng": 2,
-    "Bạch Kim": 3,
-    "Kim Cương": 4
-}
+DISPLAY_COLS = list(VI_KHACHHANG.keys())
 
 class KhachHangTab(tk.Frame):
     def __init__(self, parent, role):
@@ -33,188 +23,177 @@ class KhachHangTab(tk.Frame):
         self.tree = None
         self._sort_state = {}
         self._build_ui()
+        self.load_data()
 
     def _build_ui(self):
         top = tk.Frame(self, bg=BG_TOOLBAR)
         top.pack(fill="x", pady=8, padx=10)
 
-        create_button(top, "Thêm", command=self._on_add, kind="primary", width=10).pack(side="left", padx=(6,4))
-        # Thêm nút Sửa và Xóa
-        create_button(top, "Sửa", command=self._on_edit, kind="secondary", width=10).pack(side="left", padx=4)
-        create_button(top, "Xóa", command=self._on_delete, kind="danger", width=10).pack(side="left", padx=(4,10))
+        action_frame = tk.Frame(top, bg=BG_TOOLBAR)
+        action_frame.pack(side="left")
         
-        tk.Label(top, text="Tìm (Tên/SĐT):", bg=BG_TOOLBAR).pack(side="left", padx=(10,2))
-        self.search = tk.Entry(top, width=15)
+        create_button(action_frame, "Thêm", command=self._on_add, kind="primary", width=10).pack(side="left", padx=(6,4))
+        create_button(action_frame, "Sửa", command=self._on_edit, kind="secondary", width=10).pack(side="left", padx=4)
+        create_button(action_frame, "Xóa", command=self._on_delete, kind="danger", width=10).pack(side="left", padx=(4,10))
+
+        filter_frame = tk.Frame(top, bg=BG_TOOLBAR)
+        filter_frame.pack(side="right") 
+
+        tk.Label(filter_frame, text="Tìm (Mã/Tên/SĐT):", bg=BG_TOOLBAR).pack(side="left", padx=(6,2))
+        self.search = tk.Entry(filter_frame, width=20)
         self.search.pack(side="left", padx=(0, 8))
-
-        tk.Label(top, text="Hạng:", bg=BG_TOOLBAR).pack(side="left", padx=(6,2))
-        self.filter_hang = ttk.Combobox(top, values=["Tất cả"], width=15, state="readonly")
-        self.filter_hang.pack(side="left", padx=(0, 8))
-        self.filter_hang.set("Tất cả")
         
-        create_button(top, "Lọc", command=self.load_data, kind="secondary").pack(side="left", padx=6)
-        create_button(top, "X", command=self._clear_filters, kind="danger", width=3).pack(side="left", padx=(0,4))
-        
-        create_button(top, "⟳", 
-                      command=self._on_reload_and_recalculate, 
-                      kind="accent", 
-                      font=FONT_ICON).pack(side="left", padx=(4,0)) 
+        tk.Label(filter_frame, text="Quê quán:", bg=BG_TOOLBAR).pack(side="left", padx=(6,2))
+        self.filter_quequan = ttk.Combobox(filter_frame, values=["Tất cả"], width=15, state="readonly")
+        self.filter_quequan.pack(side="left", padx=(0, 8))
+        self.filter_quequan.set("Tất cả")
+        self.filter_quequan.bind("<<ComboboxSelected>>", lambda e: self.load_data())
 
+        create_button(filter_frame, "Tải lại", 
+                      command=self.load_data, 
+                      kind="accent").pack(side="right", padx=(4,0)) 
+        
+        create_button(filter_frame, "X", command=self._clear_filters, kind="danger", width=3).pack(side="right", padx=(0,4))
+        
+        create_button(filter_frame, "Tìm kiếm", command=self.load_data, kind="secondary").pack(side="right", padx=(0,6))
+        
         self.area, self.tree = create_treeview_frame(self)
         
-        self.tree["columns"] = DISPLAY_COLS
-        for c in DISPLAY_COLS:
-            header = VI_KHACHHANG.get(c, c)
-            self.tree.heading(c, text=header, command=lambda c=c: self._on_heading_click(c))
-            self.tree.column(c, anchor="w") 
-
-        self.load_data()
+        self.tree.bind("<Double-1>", self._on_double_click)
+        
+        setup_sortable_treeview(self.tree, VI_KHACHHANG, self._sort_state)
 
     def _on_add(self):
-        # Gọi CustomerFormDialog ở chế độ Thêm
         CustomerFormDialog(self, makh=None)
         self.load_data() 
 
     def _on_edit(self):
-        """Mở dialog Sửa cho khách hàng đang chọn."""
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Sửa", "Vui lòng chọn một khách hàng để sửa.")
             return
+        if len(sel) > 1:
+            messagebox.showinfo("Sửa", "Vui lòng chỉ chọn một khách hàng để sửa.")
+            return
             
         try:
             item = self.tree.item(sel[0])
             makh = item["values"][DISPLAY_COLS.index("MaKH")]
-            
-            # Gọi CustomerFormDialog ở chế độ Sửa
             CustomerFormDialog(self, makh=makh)
             self.load_data()
-            
         except (ValueError, IndexError):
             messagebox.showerror("Lỗi", "Không thể xác định Mã Khách hàng.")
 
     def _on_delete(self):
-        """Xóa khách hàng đang chọn khỏi CSDL."""
+        """Xóa một hoặc nhiều khách hàng đang chọn khỏi CSDL."""
         sel = self.tree.selection()
         if not sel:
-            messagebox.showinfo("Xóa", "Vui lòng chọn một khách hàng để xóa.")
+            messagebox.showinfo("Xóa", "Vui lòng chọn ít nhất một khách hàng để xóa.")
             return
 
+        makh_list = []
+        tenkh_list = []
+        for item_id in sel:
+            try:
+                item = self.tree.item(item_id)
+                makh = item["values"][DISPLAY_COLS.index("MaKH")]
+                tenkh = item["values"][DISPLAY_COLS.index("TenKH")]
+                makh_list.append(makh)
+                tenkh_list.append(tenkh)
+            except (ValueError, IndexError):
+                pass # Bỏ qua nếu có lỗi
+        
+        if not makh_list:
+             messagebox.showerror("Lỗi", "Không thể xác định Mã Khách hàng để xóa.")
+             return
+
+        tenkh_str = "\n- ".join(tenkh_list)
+        if not messagebox.askyesno("Xác nhận", 
+            f"Bạn có chắc muốn xóa {len(makh_list)} khách hàng đã chọn?\n- {tenkh_str}\n\n"
+            "(Thao tác này sẽ xóa TẤT CẢ Hóa đơn và Tài khoản đăng nhập của họ).", 
+            parent=self, icon='warning'):
+            return
+            
+        conn = None
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            
+            # Tạo placeholders (?)
+            makh_placeholders = ", ".join("?" for _ in makh_list)
+            
+            # Xóa Hóa đơn
+            cur.execute(f"DELETE FROM dbo.HoaDon WHERE MaKH IN ({makh_placeholders})", makh_list)
+            # Xóa Khách hàng
+            cur.execute(f"DELETE FROM dbo.KhachHang WHERE MaKH IN ({makh_placeholders})", makh_list)
+            # Xóa User
+            cur.execute(f"DELETE FROM dbo.Users WHERE Username IN ({makh_placeholders})", makh_list)
+            
+            conn.commit()
+            
+            messagebox.showinfo("Thành công", f"Đã xóa {len(makh_list)} khách hàng thành công.", parent=self)
+            self.load_data()
+
+        except Exception as e:
+            conn.rollback()
+            messagebox.showerror("Lỗi CSDL", f"Không thể xóa. Lỗi: \n{e}", parent=self)
+        finally:
+            if conn: conn.close()
+    
+    def _on_double_click(self, event):
+        """Mở cửa sổ Lịch sử Giao dịch khi nháy đúp."""
+        region = self.tree.identify_region(event.x, event.y)
+        if region == "heading": return
+            
+        sel = self.tree.selection()
+        if not sel or len(sel) > 1: 
+            return # Chỉ mở khi chọn 1
+        
         try:
             item = self.tree.item(sel[0])
             makh = item["values"][DISPLAY_COLS.index("MaKH")]
-            hoten = item["values"][DISPLAY_COLS.index("HoTenKH")]
+            tenkh = item["values"][DISPLAY_COLS.index("TenKH")]
             
-            if not messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn xóa khách hàng:\n{hoten} ({makh})?\n\n(Thao tác này cũng sẽ xóa tài khoản đăng nhập của họ).", parent=self):
-                return
-                
-            conn = get_connection()
-            cur = conn.cursor()
-            cur.execute("DELETE FROM dbo.ThongTinKhachHang WHERE MaKH = ?", (makh,))
-            cur.execute("DELETE FROM dbo.Users WHERE Username = ?", (makh,))
-            conn.commit()
-            conn.close()
+            CustomerHistoryDialog(self, makh, tenkh)
             
-            messagebox.showinfo("Thành công", "Đã xóa khách hàng thành công.", parent=self)
-            self.load_data()
-
         except (ValueError, IndexError):
-            messagebox.showerror("Lỗi", "Không thể xác định Mã Khách hàng.")
-        except Exception as e:
-            conn.rollback()
-            messagebox.showerror("Lỗi CSDL", f"Không thể xóa. Có thể khách hàng đã có hóa đơn.\n{e}", parent=self)
-        finally:
-            if conn: conn.close()
+            messagebox.showerror("Lỗi", "Không thể lấy thông tin khách hàng.")
 
     def _clear_filters(self):
         self.search.delete(0, "end")
-        self.filter_hang.set("Tất cả")
-        self._sort_state = {} 
+        self.filter_quequan.set("Tất cả")
+        self._sort_state.clear() 
         self.load_data()
-
-    def _on_reload_and_recalculate(self):
-        """
-        Tính toán lại hạng của TẤT CẢ khách hàng, SAU ĐÓ tải lại dữ liệu.
-        """
-        try:
-            # 1. Chạy cập nhật CSDL TRƯỚC
-            totals = update_all_customer_totals()
-            print(f"Đã cập nhật hạng cho {len(totals)} khách hàng.")
-        except Exception as e:
-            messagebox.showerror("Lỗi", f"Không thể cập nhật hạng:\n{e}", parent=self)
-        
-        # 2. Luôn tải lại dữ liệu sau khi cập nhật
-        self.load_data()
-
-    def _on_heading_click(self, col):
-        if col.lower() not in ['makh', 'hotenkh', 'tongchitieu', 'thuhang']:
-            return 
-            
-        prev = self._sort_state.get(col, None)
-        new = not prev if prev is not None else False 
-        self._sort_state = {} 
-        self._sort_state[col] = new
-        self._sort(col, new)
-
-    def _sort(self, col, reverse):
-        """Sắp xếp dữ liệu trong Treeview (in-memory)."""
-        data = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
-        
-        if col.lower() == 'tongchitieu':
-            data.sort(key=lambda t: float(t[0].replace(",","")) if t[0] else 0, reverse=reverse)
-        elif col.lower() == 'thuhang':
-            # Sắp xếp theo thứ tự Hạng, không phải A-Z
-            data.sort(key=lambda t: RANK_ORDER.get(t[0], -1), reverse=reverse)
-        else: 
-            data.sort(key=lambda t: t[0].lower() if isinstance(t[0], str) else t[0], reverse=reverse)
-        
-        for index, (_, k) in enumerate(data):
-            self.tree.move(k, "", index)
-            
-        for c in DISPLAY_COLS:
-            header = VI_KHACHHANG.get(c, c)
-            if c in self._sort_state:
-                header += " ▲" if not self._sort_state[c] else " ▼"
-            self.tree.heading(c, text=header, command=lambda c=c: self._on_heading_click(c))
-            
-    def _update_headings_after_load(self):
-        """Reset tất cả tiêu đề cột về trạng thái không sort."""
-        self._sort_state = {}
-        for c in DISPLAY_COLS:
-            header = VI_KHACHHANG.get(c, c)
-            self.tree.heading(c, text=header, command=lambda c=c: self._on_heading_click(c))
 
     def load_data(self):
-        current_sort = self._sort_state.copy()
-        
         conn = None
         try:
             conn = get_connection()
             cur = conn.cursor()
 
-            cur.execute("SELECT DISTINCT ThuHang FROM dbo.ThongTinKhachHang WHERE ThuHang IS NOT NULL AND ThuHang != '' ORDER BY ThuHang")
+            cur.execute("SELECT DISTINCT QueQuan FROM dbo.KhachHang WHERE QueQuan IS NOT NULL AND QueQuan != '' ORDER BY QueQuan")
             ranks = [r[0] for r in cur.fetchall()]
-            if self.filter_hang.get() not in ranks:
-                self.filter_hang.set("Tất cả")
-            self.filter_hang["values"] = ["Tất cả"] + ranks
+            if self.filter_quequan.get() not in ranks:
+                self.filter_quequan.set("Tất cả")
+            self.filter_quequan["values"] = ["Tất cả"] + ranks
             
             where = []
             params = []
 
             kw = self.search.get().strip()
             if kw:
-                where.append("(HoTenKH LIKE ? OR SDT LIKE ?)")
-                params.extend([f"%{kw}%", f"%{kw}%"])
+                where.append("(MaKH LIKE ? OR TenKH LIKE ? OR SDT LIKE ?)")
+                params.extend([f"%{kw}%", f"%{kw}%", f"%{kw}%"])
 
-            hang = self.filter_hang.get()
-            if hang and hang != "Tất cả":
-                where.append("ThuHang = ?")
-                params.append(hang)
+            quequan = self.filter_quequan.get()
+            if quequan and quequan != "Tất cả":
+                where.append("QueQuan = ?")
+                params.append(quequan)
             
             where_sql = (" WHERE " + " AND ".join(where)) if where else ""
             
             select_cols = ",".join(DISPLAY_COLS)
-            sql = f"SELECT {select_cols} FROM dbo.ThongTinKhachHang {where_sql}"
+            sql = f"SELECT {select_cols} FROM dbo.KhachHang {where_sql}"
             
             cur.execute(sql, params)
             rows = cur.fetchall()
@@ -231,14 +210,7 @@ class KhachHangTab(tk.Frame):
                     vals.append("" if val is None else str(val))
                 self.tree.insert("", "end", values=tuple(vals))
             
-            auto_fit_columns(self.tree)
-            
-            if current_sort:
-                col = list(current_sort.keys())[0]
-                reverse = current_sort[col]
-                self._sort(col, reverse)
-            else:
-                self._update_headings_after_load()
+            reset_sort_headings(self.tree, VI_KHACHHANG, self._sort_state)
             
         except Exception as e:
             messagebox.showerror("Lỗi", str(e), parent=self)

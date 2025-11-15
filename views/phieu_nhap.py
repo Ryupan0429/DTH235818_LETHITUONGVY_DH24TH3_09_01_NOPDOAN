@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 from db import get_connection
 from Modules.ui_style import create_button, BG_TOOLBAR
 from tkcalendar import DateEntry
@@ -7,22 +7,23 @@ from datetime import datetime, date
 
 from Modules.utils import create_treeview_frame, setup_sortable_treeview, reset_sort_headings
 from Features.chi_tiet import InvoiceDetailWindow 
-from Features.hoa_don_dialog import AddInvoiceDialog
+from Features.phieu_nhap_dialog import AddImportDialog 
 
 # Cấu hình cột
-VI_HOADON = {
-    "MaHD": "Mã HĐ",
-    "MaKH": "Mã KH",
-    "NgayGD": "Ngày GD",
-    "TongGT": "Tổng Giá Trị"
+VI_PHIEUNHAP = {
+    "SoPN": "Số Phiếu Nhập",
+    "NgayNhap": "Ngày Nhập",
+    "NguoiNhap": "Người Nhập",
+    "NguonNhap": "Nguồn Nhập",
+    "TongGGT": "Tổng Giá Trị Nhập"
 }
-DISPLAY_COLS = list(VI_HOADON.keys())
+DISPLAY_COLS = list(VI_PHIEUNHAP.keys())
 
-class HoaDonTab(tk.Frame):
+class PhieuNhapTab(tk.Frame):
     def __init__(self, parent, role, username):
-        super().__init__(parent, bg="#f7fff0")
+        super().__init__(parent, bg="#fbf8f7")
         self.role = role
-        self.username = username 
+        self.username = username
         self.tree = None
         self._sort_state = {}
         self._build_ui()
@@ -35,13 +36,13 @@ class HoaDonTab(tk.Frame):
         action_frame = tk.Frame(top, bg=BG_TOOLBAR)
         action_frame.pack(side="left")
         
-        create_button(action_frame, "Thêm", command=self._on_add_invoice, kind="primary", width=10).pack(side="left", padx=(6,4))
-        create_button(action_frame, "Xóa", command=self._delete_invoice, kind="danger", width=10).pack(side="left", padx=4)
+        create_button(action_frame, "Thêm", command=self._on_add_import, kind="primary", width=10).pack(side="left", padx=(6,4))
+        create_button(action_frame, "Xóa", command=self._delete_import, kind="danger", width=10).pack(side="left", padx=4)
 
         filter_frame = tk.Frame(top, bg=BG_TOOLBAR)
         filter_frame.pack(side="right")
 
-        tk.Label(filter_frame, text="Tìm (Mã HĐ/Mã KH):", bg=BG_TOOLBAR).pack(side="left", padx=(6,2))
+        tk.Label(filter_frame, text="Tìm (Số PN/Nguồn):", bg=BG_TOOLBAR).pack(side="left", padx=(6,2))
         self.search = tk.Entry(filter_frame, width=18)
         self.search.pack(side="left", padx=(0, 10))
 
@@ -60,59 +61,43 @@ class HoaDonTab(tk.Frame):
         create_button(filter_frame, "Tìm kiếm", command=self.load_data, kind="secondary").pack(side="right", padx=6)
         
         self.area, self.tree = create_treeview_frame(self) 
-        self.tree.bind("<Double-1>", self._on_double_click)
+        self.tree.bind("<Double-1>", self._on_double_click) 
         
-        setup_sortable_treeview(self.tree, VI_HOADON, self._sort_state)
+        setup_sortable_treeview(self.tree, VI_PHIEUNHAP, self._sort_state)
 
-    def _on_add_invoice(self):
-        """Mở cửa sổ thêm hóa đơn mới."""
-        AddInvoiceDialog(self, self.username)
+    def _on_add_import(self):
+        """Mở cửa sổ thêm phiếu nhập mới."""
+        AddImportDialog(self, self.username)
         self.load_data()
 
-
-    def _delete_invoice(self):
-        """Xóa một hoặc nhiều hóa đơn. Trigger CSDL sẽ tự hoàn kho."""
+    def _delete_import(self):
+        """Xóa phiếu nhập đang chọn. Trigger CSDL sẽ tự động TRỪ KHO."""
         sel = self.tree.selection()
         if not sel:
-            messagebox.showinfo("Xóa", "Vui lòng chọn ít nhất một hóa đơn để xóa.")
+            messagebox.showinfo("Xóa", "Vui lòng chọn phiếu nhập để xóa.")
             return
             
-        mahd_list = []
-        for item_id in sel:
-            try:
-                mahd = self.tree.item(item_id, "values")[DISPLAY_COLS.index("MaHD")]
-                mahd_list.append(mahd)
-            except (ValueError, IndexError):
-                pass
-                
-        if not mahd_list:
-            messagebox.showerror("Lỗi", "Không thể tìm thấy Mã HĐ để xóa.")
+        try:
+            sopn = self.tree.item(sel[0], "values")[DISPLAY_COLS.index("SoPN")]
+        except (ValueError, IndexError):
+            messagebox.showerror("Lỗi", "Không thể tìm thấy Số Phiếu Nhập.")
             return
             
-        if not messagebox.askyesno("Xác nhận", 
-            f"Bạn có chắc muốn XÓA {len(mahd_list)} hóa đơn đã chọn?\n\n"
-            "(Thao tác này sẽ tự động HOÀN KHO số lượng sản phẩm đã bán).", 
-            parent=self, icon='warning'):
+        if not messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn XÓA Phiếu Nhập {sopn}?\n\n(CẢNH BÁO: Thao tác này sẽ tự động TRỪ KHỎI KHO số lượng sản phẩm đã nhập).", parent=self):
             return
             
-        conn = None
         try:
             conn = get_connection()
             cur = conn.cursor()
-            
-            placeholders = ", ".join("?" for _ in mahd_list)
-            
-            cur.execute(f"DELETE FROM dbo.HoaDon WHERE MaHD IN ({placeholders})", mahd_list)
+            cur.execute("DELETE FROM dbo.PhieuNhap WHERE SoPN = ?", (sopn,))
             conn.commit()
+            conn.close()
             
-            messagebox.showinfo("Thành công", f"Đã xóa {len(mahd_list)} hóa đơn.\nĐã hoàn kho sản phẩm.", parent=self)
+            messagebox.showinfo("Thành công", f"Đã xóa phiếu nhập {sopn}.\nĐã trừ kho sản phẩm.", parent=self)
             self.load_data()
             
         except Exception as e:
-            conn.rollback()
-            messagebox.showerror("Lỗi CSDL", f"Không thể xóa hóa đơn:\n{e}", parent=self)
-        finally:
-            if conn: conn.close()
+            messagebox.showerror("Lỗi CSDL", f"Không thể xóa phiếu nhập:\n{e}", parent=self)
 
     def clear_filters(self):
         self.search.delete(0, "end")
@@ -132,7 +117,7 @@ class HoaDonTab(tk.Frame):
             
             kw = self.search.get().strip()
             if kw:
-                where.append("(MaHD LIKE ? OR MaKH LIKE ?)")
+                where.append("(SoPN LIKE ? OR NguonNhap LIKE ?)")
                 params.extend([f"%{kw}%", f"%{kw}%"])
 
             df_str = self.date_from.get()
@@ -141,11 +126,11 @@ class HoaDonTab(tk.Frame):
             try:
                 if df_str:
                     df = datetime.strptime(df_str, '%d/%m/%Y').date()
-                    where.append("CAST(NgayGD AS DATE) >= ?") 
+                    where.append("CAST(NgayNhap AS DATE) >= ?") 
                     params.append(df)
                 if dt_str:
                     dt = datetime.strptime(dt_str, '%d/%m/%Y').date()
-                    where.append("CAST(NgayGD AS DATE) <= ?")
+                    where.append("CAST(NgayNhap AS DATE) <= ?")
                     params.append(dt)
             except ValueError:
                 if df_str or dt_str:
@@ -156,7 +141,8 @@ class HoaDonTab(tk.Frame):
             
             select_cols = ",".join(DISPLAY_COLS)
             
-            sql = f"SELECT {select_cols} FROM dbo.HoaDon {where_sql} ORDER BY MaHD ASC"
+            # *** SỬA ĐỔI: Thay đổi ORDER BY ***
+            sql = f"SELECT {select_cols} FROM dbo.PhieuNhap {where_sql} ORDER BY SoPN ASC"
             
             cur.execute(sql, params)
             rows = cur.fetchall()
@@ -168,14 +154,14 @@ class HoaDonTab(tk.Frame):
                 vals = []
                 for col_name in DISPLAY_COLS:
                     val = getattr(r, col_name)
-                    if col_name == 'NgayGD' and isinstance(val, (datetime, date)):
+                    if col_name == 'NgayNhap' and isinstance(val, (datetime, date)):
                         val = val.strftime('%d/%m/%Y')
-                    elif col_name == 'TongGT':
+                    elif col_name == 'TongGGT':
                         val = f"{val:,.0f}" if val is not None else "0"
                     vals.append("" if val is None else str(val))
                 self.tree.insert("", "end", values=tuple(vals))
 
-            reset_sort_headings(self.tree, VI_HOADON, self._sort_state)
+            reset_sort_headings(self.tree, VI_PHIEUNHAP, self._sort_state)
 
         except Exception as e:
             messagebox.showerror("Lỗi", str(e), parent=self)
@@ -183,6 +169,7 @@ class HoaDonTab(tk.Frame):
             if conn: conn.close()
 
     def _on_double_click(self, event):
+        """Mở cửa sổ chi tiết (Tái sử dụng InvoiceDetailWindow)."""
         region = self.tree.identify_region(event.x, event.y)
         if region == "heading": return
             
@@ -192,5 +179,5 @@ class HoaDonTab(tk.Frame):
         vals = self.tree.item(sel[0], "values")
         if not vals: return
         
-        mahd = vals[DISPLAY_COLS.index("MaHD")]
-        InvoiceDetailWindow(self, mahd)
+        sopn = vals[DISPLAY_COLS.index("SoPN")]
+        InvoiceDetailWindow(self, sopn)

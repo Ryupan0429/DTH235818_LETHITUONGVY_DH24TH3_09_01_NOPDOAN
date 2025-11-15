@@ -1,26 +1,11 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from db import get_connection
 import configparser 
 import os
-
-try:
-    from styles.ui_style import (
-        BG_MAIN, BTN_PRIMARY_BG, BTN_DANGER_BG, 
-        FONT_NORMAL, FONT_TITLE, center
-    )
-except ImportError:
-    # Fallback
-    BG_MAIN = "#e8f8e9"
-    BTN_PRIMARY_BG = "#b9e89b"
-    BTN_DANGER_BG = "#f7c6c6"
-    FONT_NORMAL = ("Segoe UI", 10)
-    FONT_TITLE = ("Segoe UI", 11, "bold")
-    def center(win, w, h):
-        win.update_idletasks()
-        sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
-        x, y = (sw - w)//2, (sh - h)//2
-        win.geometry(f"{w}x{h}+{x}+{y}")
+from Modules.ui_style import (
+    BG_MAIN, FONT_NORMAL, FONT_TITLE, center, style_ttk
+)
 
 CONFIG_FILE = 'config.ini'
 
@@ -50,6 +35,7 @@ def login_screen():
     """Hiển thị cửa sổ đăng nhập."""
     root = tk.Tk()
     root.title("Đăng nhập hệ thống")
+    style_ttk(root)
     root.configure(bg=BG_MAIN)
     center(root, 400, 280)
     root.resizable(False, False)
@@ -95,6 +81,10 @@ def login_screen():
             
         try:
             conn = get_connection()
+            if not conn:
+                print("Lỗi kết nối CSDL từ login.")
+                return 
+                
             cur = conn.cursor()
             cur.execute("SELECT Role, Password FROM Users WHERE Username=?", (user,))
             row = cur.fetchone()
@@ -105,7 +95,7 @@ def login_screen():
                 return
             
             from main_app import open_main_admin
-            from customer_app import open_main_customer
+            from Customer.customer_app import open_main_customer
             
             role = row[0]
             root.destroy() 
@@ -123,11 +113,11 @@ def login_screen():
 
     btn_frame = tk.Frame(frame, bg="white")
     btn_frame.grid(row=4, column=0, columnspan=2, pady=15)
-
-    tk.Button(btn_frame, text="Đăng nhập", width=12, bg=BTN_PRIMARY_BG, fg="black",
-              font=FONT_NORMAL, command=handle_login).grid(row=0,column=0,padx=8)
-    tk.Button(btn_frame, text="Thoát", width=12, bg=BTN_DANGER_BG, fg="black",
-              font=FONT_NORMAL, command=handle_exit).grid(row=0,column=1,padx=8)
+    
+    ttk.Button(btn_frame, text="Đăng nhập", width=12, style="Primary.TButton",
+              command=handle_login).grid(row=0,column=0,padx=8)
+    ttk.Button(btn_frame, text="Thoát", width=12, style="Danger.TButton",
+              command=handle_exit).grid(row=0,column=1,padx=8)
 
     root.bind('<Return>', lambda event=None: handle_login())
     root.mainloop()
