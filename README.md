@@ -9,8 +9,7 @@
 
 ## Mục tiêu dự án
 Xây dựng một ứng dụng Desktop (GUI) bằng Python (Tkinter) và SQL Server để quản lý toàn diện nghiệp vụ tại một cửa hàng nông dược.
-
-Ứng dụng tập trung vào phân hệ Quản trị viên (Admin), cung cấp các công cụ mạnh mẽ để quản lý kho hàng (Phiếu nhập), bán hàng (Hóa đơn), quản lý đối tác (Khách hàng) và theo dõi tình hình tài chính (Báo cáo Thu Chi) một cách trực quan.
+Ứng dụng cung cấp các công cụ để quản lý kho hàng, nhập hàng, bán hàng, quản lý đối tác (Khách hàng) và theo dõi tình hình tài chính (Báo cáo Thu Chi) một cách trực quan.
 
 ## Hướng dẫn cài đặt và chạy
 
@@ -59,7 +58,7 @@ PASSWORD = '' # Mật khẩu của bạn
 ### 4. Chạy ứng dụng
 #### Cách 1: Chạy bằng file thực thi (EXE)
 
-Chạy tệp QLCHNongDuoc.exe (nếu đã được đóng gói).
+Chạy tệp QLCHNongDuoc.exe trong thư mục dist (nếu đã được đóng gói).
 Nếu chưa thì dùng sau để đóng gói ứng dụng thành file.exe
 ```Python
 
