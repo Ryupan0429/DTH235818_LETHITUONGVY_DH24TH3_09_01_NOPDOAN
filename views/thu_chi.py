@@ -9,9 +9,9 @@ from Features.bao_cao_doanh_thu import get_thu_chi_data
 from Modules.ui_style import BG_MAIN, BG_TOOLBAR, create_button
 
 class ThuChiTab(tk.Frame):
-    def __init__(self, parent, role):
+    def __init__(self, parent):
+        # Khởi tạo Tab Báo cáo Thu Chi
         super().__init__(parent, bg=BG_MAIN)
-        self.role = role
         self.tree = None
         self.canvas = None
         self.fig = None
@@ -22,7 +22,7 @@ class ThuChiTab(tk.Frame):
         self.load_data() 
 
     def _build_ui(self):
-        
+        # Xây dựng giao diện (Toolbar, Biểu đồ, Bảng)
         toolbar = tk.Frame(self, bg=BG_TOOLBAR)
         toolbar.pack(fill="x", padx=10, pady=(8,4))
         
@@ -88,7 +88,7 @@ class ThuChiTab(tk.Frame):
         self.tree.column("LoiNhuan", anchor="e")
 
     def _load_selectors(self):
-        """Tải danh sách các năm/tháng vào Combobox."""
+        # Tải danh sách các năm/tháng vào Combobox
         current_year = datetime.datetime.now().year
         current_month = datetime.datetime.now().month
         
@@ -100,7 +100,7 @@ class ThuChiTab(tk.Frame):
         self._on_mode_change() 
 
     def _on_mode_change(self):
-        """Ẩn/Hiện bộ chọn Tháng khi đổi chế độ."""
+        # Ẩn/Hiện bộ chọn Tháng khi đổi chế độ
         mode = self.view_mode.get()
         if mode == "Daily":
             self.month_label.pack(side="left", padx=(10,2))
@@ -110,7 +110,7 @@ class ThuChiTab(tk.Frame):
             self.month_cb.pack_forget()
 
     def load_data(self):
-        """Tải dữ liệu thu/chi, cập nhật cả bảng và biểu đồ."""
+        # Tải dữ liệu thu/chi, cập nhật cả bảng và biểu đồ
         mode = self.view_mode.get()
         
         try:
@@ -124,7 +124,7 @@ class ThuChiTab(tk.Frame):
                 param = year
                 title = f"Thu Chi các tháng trong Năm {year}"
                 period_label = "Tháng"
-            else: # Yearly
+            else: 
                 param = year
                 title = f"Thu Chi 5 năm (kết thúc {year})"
                 period_label = "Năm"
@@ -146,19 +146,17 @@ class ThuChiTab(tk.Frame):
         self._update_treeview(df, period_label)
 
     def _update_chart(self, df, title, period_label, mode):
-        """Vẽ lại biểu đồ cột (Thu và Chi)."""
+        # Vẽ lại biểu đồ cột
         self.ax.clear()
         
         periods = df["Period"]
         thu = df["Thu"]
         chi = df["Chi"]
         
-        x = np.arange(len(periods))  # Vị trí của các nhãn
-        width = 0.35  # Độ rộng của cột
+        x = np.arange(len(periods))  
+        width = 0.35 
 
-        # Vẽ cột Thu
         rects1 = self.ax.bar(x - width/2, thu, width, label='Tổng Thu (Bán)', color='#4CAF50')
-        # Vẽ cột Chi
         rects2 = self.ax.bar(x + width/2, chi, width, label='Tổng Chi (Nhập)', color='#F44336')
 
         self.ax.set_title(title, fontsize=12)
@@ -170,22 +168,19 @@ class ThuChiTab(tk.Frame):
             ticker.FuncFormatter(lambda x, p: format(int(x), ','))
         )
     
-        # Đặt vị trí (index) và nhãn (ngày/tháng/năm)
         self.ax.set_xticks(x)
         self.ax.set_xticklabels(periods)
 
         if mode == 'Daily':
-            # Nếu là xem theo Ngày (có 30+ nhãn), tự động giảm số lượng nhãn
             self.ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=10, integer=True))
         else:
-            # Nếu là Tháng (12) hoặc Năm (5), hiển thị tất cả
             self.ax.get_xaxis().set_major_formatter(ticker.FormatStrFormatter('%d'))
 
         self.fig.tight_layout()
         self.canvas.draw()
 
     def _update_treeview(self, df, period_label):
-        """Cập nhật dữ liệu cho bảng Treeview."""
+        # Cập nhật dữ liệu cho bảng Treeview
         self.tree.heading("Ky", text=period_label) 
         self.tree.delete(*self.tree.get_children())
         
@@ -194,7 +189,6 @@ class ThuChiTab(tk.Frame):
             chi_str = f"{row['Chi']:,.0f}"
             loinhuan_str = f"{row['LoiNhuan']:,.0f}"
             
-            # Tô màu cho Lợi nhuận
             tag = "profit" if row['LoiNhuan'] >= 0 else "loss"
 
             self.tree.insert("", "end", values=(
@@ -204,6 +198,5 @@ class ThuChiTab(tk.Frame):
                 loinhuan_str
             ), tags=(tag,))
         
-        # Cấu hình màu sắc
         self.tree.tag_configure("profit", foreground="green")
         self.tree.tag_configure("loss", foreground="red")

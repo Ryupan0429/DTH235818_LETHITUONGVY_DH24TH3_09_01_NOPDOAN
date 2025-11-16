@@ -5,6 +5,7 @@ from Modules.ui_style import create_button, BG_TOOLBAR
 from Modules.utils import create_treeview_frame, setup_sortable_treeview, reset_sort_headings
 from Features.khach_hang_dialog import CustomerFormDialog 
 from Features.lich_su_GD import CustomerHistoryDialog
+from Modules.nghiep_vu_xu_ly import xoa_khach_hang
 
 VI_KHACHHANG = {
     "MaKH": "Mã KH",
@@ -17,15 +18,16 @@ VI_KHACHHANG = {
 DISPLAY_COLS = list(VI_KHACHHANG.keys())
 
 class KhachHangTab(tk.Frame):
-    def __init__(self, parent, role):
+    def __init__(self, parent):
+        # Khởi tạo Tab Khách Hàng
         super().__init__(parent, bg="#f7fbf8")
-        self.role = role
         self.tree = None
         self._sort_state = {}
         self._build_ui()
         self.load_data()
 
     def _build_ui(self):
+        # Xây dựng giao diện (Toolbar, Bảng)
         top = tk.Frame(self, bg=BG_TOOLBAR)
         top.pack(fill="x", pady=8, padx=10)
 
@@ -36,7 +38,6 @@ class KhachHangTab(tk.Frame):
         create_button(action_frame, "Sửa", command=self._on_edit, kind="secondary", width=10).pack(side="left", padx=4)
         create_button(action_frame, "Xóa", command=self._on_delete, kind="danger", width=10).pack(side="left", padx=4)
         create_button(action_frame, "Top 3 Chi Tiêu", command=self._show_top_3, kind="accent", width=12).pack(side="left", padx=(4,10))
-
 
         filter_frame = tk.Frame(top, bg=BG_TOOLBAR)
         filter_frame.pack(side="right") 
@@ -65,8 +66,92 @@ class KhachHangTab(tk.Frame):
         
         setup_sortable_treeview(self.tree, VI_KHACHHANG, self._sort_state)
 
+    def _on_add(self):
+        # Mở cửa sổ Thêm khách hàng
+        CustomerFormDialog(self, makh=None)
+        self.load_data() 
+
+    def _on_edit(self):
+        # Mở cửa sổ Sửa khách hàng
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("Sửa", "Vui lòng chọn một khách hàng để sửa.")
+            return
+        if len(sel) > 1:
+            messagebox.showinfo("Sửa", "Vui lòng chỉ chọn một khách hàng để sửa.")
+            return
+            
+        try:
+            item = self.tree.item(sel[0])
+            makh = item["values"][DISPLAY_COLS.index("MaKH")]
+            CustomerFormDialog(self, makh=makh)
+            self.load_data()
+        except (ValueError, IndexError):
+            messagebox.showerror("Lỗi", "Không thể xác định Mã Khách hàng.")
+
+    def _on_delete(self):
+        # Xóa các khách hàng đã chọn
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("Xóa", "Vui lòng chọn ít nhất một khách hàng để xóa.")
+            return
+
+        makh_list = []
+        tenkh_list = []
+        for item_id in sel:
+            try:
+                item = self.tree.item(item_id)
+                makh = item["values"][DISPLAY_COLS.index("MaKH")]
+                tenkh = item["values"][DISPLAY_COLS.index("TenKH")]
+                makh_list.append(makh)
+                tenkh_list.append(tenkh)
+            except (ValueError, IndexError):
+                pass
+        
+        if not makh_list:
+             messagebox.showerror("Lỗi", "Không thể xác định Mã Khách hàng để xóa.")
+             return
+
+        tenkh_str = "\n- ".join(tenkh_list)
+        if not messagebox.askyesno("Xác nhận", 
+            f"Bạn có chắc muốn xóa {len(makh_list)} khách hàng đã chọn?\n- {tenkh_str}\n\n"
+            "(Thao tác này sẽ xóa TẤT CẢ Hóa đơn của họ).", 
+            parent=self, icon='warning'):
+            return
+            
+        try:
+            success, error = xoa_khach_hang(makh_list)
+            
+            if error:
+                raise Exception(error)
+            
+            messagebox.showinfo("Thành công", f"Đã xóa {len(makh_list)} khách hàng thành công.", parent=self)
+            self.load_data()
+
+        except Exception as e:
+            messagebox.showerror("Lỗi CSDL", f"Không thể xóa. Lỗi: \n{e}", parent=self)
+    
+    def _on_double_click(self, event):
+        # Mở cửa sổ Lịch sử Giao dịch
+        region = self.tree.identify_region(event.x, event.y)
+        if region == "heading": return
+            
+        sel = self.tree.selection()
+        if not sel or len(sel) > 1: 
+            return 
+        
+        try:
+            item = self.tree.item(sel[0])
+            makh = item["values"][DISPLAY_COLS.index("MaKH")]
+            tenkh = item["values"][DISPLAY_COLS.index("TenKH")]
+            
+            CustomerHistoryDialog(self, makh, tenkh)
+            
+        except (ValueError, IndexError):
+            messagebox.showerror("Lỗi", "Không thể lấy thông tin khách hàng.")
+
     def _show_top_3(self):
-        """Hiển thị Top 3 khách hàng chi tiêu nhiều nhất."""
+        # Hiển thị Top 3 khách hàng chi tiêu
         conn = None
         try:
             conn = get_connection()
@@ -92,109 +177,15 @@ class KhachHangTab(tk.Frame):
             if conn: conn.close()
             messagebox.showerror("Lỗi", f"Không thể lấy dữ liệu Top 3:\n{e}", parent=self)
 
-    def _on_add(self):
-        CustomerFormDialog(self, makh=None)
-        self.load_data() 
-
-    def _on_edit(self):
-        sel = self.tree.selection()
-        if not sel:
-            messagebox.showinfo("Sửa", "Vui lòng chọn một khách hàng để sửa.")
-            return
-        if len(sel) > 1:
-            messagebox.showinfo("Sửa", "Vui lòng chỉ chọn một khách hàng để sửa.")
-            return
-            
-        try:
-            item = self.tree.item(sel[0])
-            makh = item["values"][DISPLAY_COLS.index("MaKH")]
-            CustomerFormDialog(self, makh=makh)
-            self.load_data()
-        except (ValueError, IndexError):
-            messagebox.showerror("Lỗi", "Không thể xác định Mã Khách hàng.")
-
-    def _on_delete(self):
-        """Xóa một hoặc nhiều khách hàng đang chọn khỏi CSDL."""
-        sel = self.tree.selection()
-        if not sel:
-            messagebox.showinfo("Xóa", "Vui lòng chọn ít nhất một khách hàng để xóa.")
-            return
-
-        makh_list = []
-        tenkh_list = []
-        for item_id in sel:
-            try:
-                item = self.tree.item(item_id)
-                makh = item["values"][DISPLAY_COLS.index("MaKH")]
-                tenkh = item["values"][DISPLAY_COLS.index("TenKH")]
-                makh_list.append(makh)
-                tenkh_list.append(tenkh)
-            except (ValueError, IndexError):
-                pass # Bỏ qua nếu có lỗi
-        
-        if not makh_list:
-             messagebox.showerror("Lỗi", "Không thể xác định Mã Khách hàng để xóa.")
-             return
-
-        tenkh_str = "\n- ".join(tenkh_list)
-        if not messagebox.askyesno("Xác nhận", 
-            f"Bạn có chắc muốn xóa {len(makh_list)} khách hàng đã chọn?\n- {tenkh_str}\n\n"
-            "(Thao tác này sẽ xóa TẤT CẢ Hóa đơn của họ).", 
-            parent=self, icon='warning'):
-            return
-            
-        conn = None
-        try:
-            conn = get_connection()
-            cur = conn.cursor()
-            
-            # Tạo placeholders (?)
-            makh_placeholders = ", ".join("?" for _ in makh_list)
-            
-            # Xóa Hóa đơn
-            cur.execute(f"DELETE FROM dbo.HoaDon WHERE MaKH IN ({makh_placeholders})", makh_list)
-            # Xóa Khách hàng
-            cur.execute(f"DELETE FROM dbo.KhachHang WHERE MaKH IN ({makh_placeholders})", makh_list)
-            # Xóa User
-            cur.execute(f"DELETE FROM dbo.Users WHERE Username IN ({makh_placeholders})", makh_list)
-            
-            conn.commit()
-            
-            messagebox.showinfo("Thành công", f"Đã xóa {len(makh_list)} khách hàng thành công.", parent=self)
-            self.load_data()
-
-        except Exception as e:
-            conn.rollback()
-            messagebox.showerror("Lỗi CSDL", f"Không thể xóa. Lỗi: \n{e}", parent=self)
-        finally:
-            if conn: conn.close()
-    
-    def _on_double_click(self, event):
-        """Mở cửa sổ Lịch sử Giao dịch khi nháy đúp."""
-        region = self.tree.identify_region(event.x, event.y)
-        if region == "heading": return
-            
-        sel = self.tree.selection()
-        if not sel or len(sel) > 1: 
-            return # Chỉ mở khi chọn 1
-        
-        try:
-            item = self.tree.item(sel[0])
-            makh = item["values"][DISPLAY_COLS.index("MaKH")]
-            tenkh = item["values"][DISPLAY_COLS.index("TenKH")]
-            
-            CustomerHistoryDialog(self, makh, tenkh)
-            
-        except (ValueError, IndexError):
-            messagebox.showerror("Lỗi", "Không thể lấy thông tin khách hàng.")
-
     def _clear_filters(self):
+        # Xóa các bộ lọc và tải lại
         self.search.delete(0, "end")
         self.filter_quequan.set("Tất cả")
         self._sort_state.clear() 
         self.load_data()
 
     def load_data(self):
+        # Tải/Tải lại dữ liệu từ CSDL
         conn = None
         try:
             conn = get_connection()

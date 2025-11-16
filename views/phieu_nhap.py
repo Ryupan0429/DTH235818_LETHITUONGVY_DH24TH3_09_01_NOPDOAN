@@ -20,9 +20,9 @@ VI_PHIEUNHAP = {
 DISPLAY_COLS = list(VI_PHIEUNHAP.keys())
 
 class PhieuNhapTab(tk.Frame):
-    def __init__(self, parent, role, username):
+    def __init__(self, parent, username):
+        # Khởi tạo Tab Phiếu Nhập
         super().__init__(parent, bg="#fbf8f7")
-        self.role = role
         self.username = username
         self.tree = None
         self._sort_state = {}
@@ -30,6 +30,7 @@ class PhieuNhapTab(tk.Frame):
         self.load_data()
 
     def _build_ui(self):
+        # Xây dựng giao diện (Toolbar, Bảng)
         top = tk.Frame(self, bg=BG_TOOLBAR)
         top.pack(fill="x", pady=8, padx=10)
 
@@ -67,7 +68,7 @@ class PhieuNhapTab(tk.Frame):
         setup_sortable_treeview(self.tree, VI_PHIEUNHAP, self._sort_state)
 
     def _on_export_import(self):
-        """Xuất phiếu nhập đã chọn ra file Word."""
+        # Xuất phiếu nhập đã chọn ra file Word
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Xuất file", "Vui lòng chọn một phiếu nhập để xuất.")
@@ -83,11 +84,12 @@ class PhieuNhapTab(tk.Frame):
             messagebox.showerror("Lỗi", "Không thể xác định Số Phiếu Nhập.")
 
     def _on_add_import(self):
-        """Mở cửa sổ thêm phiếu nhập mới."""
+        # Mở cửa sổ thêm phiếu nhập mới
         AddImportDialog(self, self.username)
         self.load_data()
 
     def _delete_import(self):
+        # Xóa các phiếu nhập đã chọn
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Xóa", "Vui lòng chọn ít nhất một phiếu nhập để xóa.")
@@ -124,6 +126,7 @@ class PhieuNhapTab(tk.Frame):
             messagebox.showerror("Lỗi CSDL", f"Không thể xóa phiếu nhập:\n{e}", parent=self)
 
     def clear_filters(self):
+        # Xóa các bộ lọc và tải lại
         self.search.delete(0, "end")
         self.date_from.delete(0, "end")
         self.date_to.delete(0, "end")
@@ -131,6 +134,7 @@ class PhieuNhapTab(tk.Frame):
         self.load_data()
 
     def load_data(self):
+        # Tải/Tải lại dữ liệu từ CSDL
         conn = None
         try:
             conn = get_connection()
@@ -162,9 +166,7 @@ class PhieuNhapTab(tk.Frame):
                     return
 
             where_sql = (" WHERE " + " AND ".join(where)) if where else ""
-            
             select_cols = ",".join(DISPLAY_COLS)
-            
             sql = f"SELECT {select_cols} FROM dbo.PhieuNhap {where_sql} ORDER BY SoPN ASC"
             
             cur.execute(sql, params)
@@ -192,7 +194,7 @@ class PhieuNhapTab(tk.Frame):
             if conn: conn.close()
 
     def _on_double_click(self, event):
-        """Mở cửa sổ chi tiết (Tái sử dụng InvoiceDetailWindow)."""
+        # Mở cửa sổ chi tiết
         region = self.tree.identify_region(event.x, event.y)
         if region == "heading": return
             

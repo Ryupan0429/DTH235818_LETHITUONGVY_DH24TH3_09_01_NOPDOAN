@@ -10,7 +10,6 @@ from Features.hoa_don_dialog import AddInvoiceDialog
 from Modules.nghiep_vu_xu_ly import xoa_hoa_don
 from Features.xuat_file import export_invoice_to_word
 
-# Cấu hình cột
 VI_HOADON = {
     "MaHD": "Mã HĐ",
     "MaKH": "Mã KH",
@@ -20,9 +19,9 @@ VI_HOADON = {
 DISPLAY_COLS = list(VI_HOADON.keys())
 
 class HoaDonTab(tk.Frame):
-    def __init__(self, parent, role, username):
+    def __init__(self, parent, username):
+        # Khởi tạo Tab Hóa Đơn
         super().__init__(parent, bg="#f7fff0")
-        self.role = role
         self.username = username 
         self.tree = None
         self._sort_state = {}
@@ -30,6 +29,7 @@ class HoaDonTab(tk.Frame):
         self.load_data()
 
     def _build_ui(self):
+        # Xây dựng giao diện (Toolbar, Bảng)
         top = tk.Frame(self, bg=BG_TOOLBAR)
         top.pack(fill="x", pady=8, padx=10)
 
@@ -67,7 +67,7 @@ class HoaDonTab(tk.Frame):
         setup_sortable_treeview(self.tree, VI_HOADON, self._sort_state)
 
     def _on_export_invoice(self):
-        """Xuất hóa đơn đã chọn ra file Word."""
+        # Xuất hóa đơn đã chọn ra file Word
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Xuất file", "Vui lòng chọn một hóa đơn để xuất.")
@@ -83,12 +83,13 @@ class HoaDonTab(tk.Frame):
             messagebox.showerror("Lỗi", "Không thể xác định Mã HĐ.")
 
     def _on_add_invoice(self):
-        """Mở cửa sổ thêm hóa đơn mới."""
+        # Mở cửa sổ thêm hóa đơn mới
         AddInvoiceDialog(self, self.username)
         self.load_data()
 
 
     def _delete_invoice(self):
+        # Xóa các hóa đơn đã chọn
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Xóa", "Vui lòng chọn ít nhất một hóa đơn để xóa.")
@@ -125,6 +126,7 @@ class HoaDonTab(tk.Frame):
             messagebox.showerror("Lỗi CSDL", f"Không thể xóa hóa đơn:\n{e}", parent=self)
 
     def clear_filters(self):
+        # Xóa các bộ lọc và tải lại
         self.search.delete(0, "end")
         self.date_from.delete(0, "end")
         self.date_to.delete(0, "end")
@@ -132,6 +134,7 @@ class HoaDonTab(tk.Frame):
         self.load_data()
 
     def load_data(self):
+        # Tải/Tải lại dữ liệu từ CSDL
         conn = None
         try:
             conn = get_connection()
@@ -163,9 +166,7 @@ class HoaDonTab(tk.Frame):
                     return
 
             where_sql = (" WHERE " + " AND ".join(where)) if where else ""
-            
             select_cols = ",".join(DISPLAY_COLS)
-            
             sql = f"SELECT {select_cols} FROM dbo.HoaDon {where_sql} ORDER BY MaHD ASC"
             
             cur.execute(sql, params)
@@ -193,6 +194,7 @@ class HoaDonTab(tk.Frame):
             if conn: conn.close()
 
     def _on_double_click(self, event):
+        # Mở cửa sổ chi tiết
         region = self.tree.identify_region(event.x, event.y)
         if region == "heading": return
             

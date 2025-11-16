@@ -4,8 +4,8 @@ from db import get_connection
 from Modules.ui_style import create_button, BG_TOOLBAR
 from Modules.utils import create_treeview_frame, setup_sortable_treeview, reset_sort_headings
 from Features.san_pham_dialog import SanPhamDialog 
+from Modules.nghiep_vu_xu_ly import xoa_san_pham, cap_nhat_gia_hang_loat
 
-# Cấu hình cột
 VI_SANPHAM = {
     "MaSP": "Mã SP",
     "TenSP": "Tên Sản Phẩm",
@@ -13,70 +13,73 @@ VI_SANPHAM = {
     "CongDung": "Công dụng",
     "SoLuong": "Tồn kho",
     "DVTinh": "ĐVT",
-    "DonGia": "Đơn giá"
+    "DonGia": "Đơn giá" 
 }
 DISPLAY_COLS = list(VI_SANPHAM.keys())
 
 class SanPhamTab(tk.Frame):
-    def __init__(self, parent, role):
+    def __init__(self, parent):
+        # Khởi tạo Tab Sản Phẩm
         super().__init__(parent, bg="#f7fbf8")
-        self.role = role
         self.tree = None
         self._sort_state = {}
         self._build_ui()
         self.load_data()
 
     def _build_ui(self):
+        # Xây dựng giao diện (Toolbar, Bảng)
         top = tk.Frame(self, bg=BG_TOOLBAR)
         top.pack(fill="x", pady=8, padx=10)
 
-        # --- Bên trái (Các nút hành động) ---
         action_frame = tk.Frame(top, bg=BG_TOOLBAR)
         action_frame.pack(side="left")
         
         create_button(action_frame, "Thêm", command=self._on_add, kind="primary", width=10).pack(side="left", padx=(6,4))
         create_button(action_frame, "Sửa", command=self._on_edit, kind="secondary", width=10).pack(side="left", padx=4)
         create_button(action_frame, "Xóa", command=self._on_delete, kind="danger", width=10).pack(side="left", padx=4)
-        create_button(action_frame, "Đổi Giá", command=self._on_batch_price_change, kind="accent", width=10).pack(side="left", padx=(4,10))
+        create_button(action_frame, "Đổi Giá (%)", command=self._on_batch_price_change, kind="accent", width=10).pack(side="left", padx=(4,10))
 
-        # --- Bên phải (Các bộ lọc) ---
         filter_frame = tk.Frame(top, bg=BG_TOOLBAR)
-        filter_frame.pack(side="right")
+        filter_frame.pack(side="right") 
+
+        tk.Label(filter_frame, text="Tìm (Mã/Tên/CD):", bg=BG_TOOLBAR).pack(side="left", padx=(6,2))
+        self.search = tk.Entry(filter_frame, width=20)
+        self.search.pack(side="left", padx=(0, 8))
+        
+        tk.Label(filter_frame, text="Loại:", bg=BG_TOOLBAR).pack(side="left", padx=(6,2))
+        self.filter_loai = ttk.Combobox(filter_frame, values=["Tất cả"], width=15, state="readonly")
+        self.filter_loai.pack(side="left", padx=(0, 8))
+        self.filter_loai.set("Tất cả")
+        self.filter_loai.bind("<<ComboboxSelected>>", lambda e: self.load_data())
+
+        tk.Label(filter_frame, text="Giá từ:", bg=BG_TOOLBAR).pack(side="left", padx=(6,2))
+        self.price_min = tk.Entry(filter_frame, width=8)
+        self.price_min.pack(side="left")
+        
+        tk.Label(filter_frame, text="đến:", bg=BG_TOOLBAR).pack(side="left", padx=(2,2))
+        self.price_max = tk.Entry(filter_frame, width=8)
+        self.price_max.pack(side="left", padx=(0, 8))
 
         create_button(filter_frame, "Tải lại", command=self.load_data, kind="accent").pack(side="right", padx=(4,0))
         create_button(filter_frame, "X", command=self._clear_filters, kind="danger", width=3).pack(side="right", padx=(0,4))
-        create_button(filter_frame, "Lọc", command=self.load_data, kind="secondary").pack(side="right", padx=6)
-        
-        self.price_max = tk.Entry(filter_frame, width=8)
-        self.price_max.pack(side="right", padx=(0, 8))
-        tk.Label(filter_frame, text="đến:", bg=BG_TOOLBAR).pack(side="right", padx=(2,2))
-        self.price_min = tk.Entry(filter_frame, width=8)
-        self.price_min.pack(side="right")
-        tk.Label(filter_frame, text="Giá từ:", bg=BG_TOOLBAR).pack(side="right", padx=(6,2))
-
-        self.filter_loai = ttk.Combobox(filter_frame, values=["Tất cả"], width=15, state="readonly")
-        self.filter_loai.pack(side="right", padx=(0, 8))
-        self.filter_loai.set("Tất cả")
-        self.filter_loai.bind("<<ComboboxSelected>>", lambda e: self.load_data())
-        tk.Label(filter_frame, text="Loại:", bg=BG_TOOLBAR).pack(side="right", padx=(6,2))
-        
-        self.search = tk.Entry(filter_frame, width=20)
-        self.search.pack(side="right", padx=(0, 8))
-        tk.Label(filter_frame, text="Tìm:", bg=BG_TOOLBAR).pack(side="right", padx=(6,2))
+        create_button(filter_frame, "Tìm kiếm", command=self.load_data, kind="secondary").pack(side="right", padx=6)
 
         self.area, self.tree = create_treeview_frame(self)
         setup_sortable_treeview(self.tree, VI_SANPHAM, self._sort_state)
 
     def _on_add(self):
-        """Mở dialog thêm sản phẩm mới."""
+        # Mở cửa sổ Thêm sản phẩm
         SanPhamDialog(self, masp=None)
         self.load_data() 
 
     def _on_edit(self):
-        """Mở dialog sửa sản phẩm."""
+        # Mở cửa sổ Sửa sản phẩm
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Sửa", "Vui lòng chọn một sản phẩm để sửa.")
+            return
+        if len(sel) > 1:
+            messagebox.showinfo("Sửa", "Vui lòng chỉ chọn một sản phẩm để sửa.")
             return
             
         try:
@@ -90,7 +93,7 @@ class SanPhamTab(tk.Frame):
             messagebox.showerror("Lỗi", "Không thể xác định Mã Sản Phẩm.")
 
     def _on_delete(self):
-        """Xóa một hoặc nhiều sản phẩm khỏi CSDL."""
+        # Xóa các sản phẩm đã chọn
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Xóa", "Vui lòng chọn ít nhất một sản phẩm để xóa.")
@@ -119,41 +122,32 @@ class SanPhamTab(tk.Frame):
             parent=self, icon='warning'):
             return
             
-        conn = None
         try:
-            conn = get_connection()
-            cur = conn.cursor()
+            success, error = xoa_san_pham(masp_list)
             
-            placeholders = ", ".join("?" for _ in masp_list)
-            
-            cur.execute(f"DELETE FROM dbo.SanPhamNongDuoc WHERE MaSP IN ({placeholders})", masp_list)
-            conn.commit()
+            if error:
+                raise Exception(error)
             
             messagebox.showinfo("Thành công", f"Đã xóa {len(masp_list)} sản phẩm thành công.", parent=self)
             self.load_data()
 
         except Exception as e:
-            conn.rollback()
             messagebox.showerror("Lỗi CSDL", f"Không thể xóa. Có thể sản phẩm đã có trong Hóa đơn hoặc Phiếu nhập.\n{e}", parent=self)
-        finally:
-            if conn: conn.close()
-            
+
     def _on_batch_price_change(self):
-        """Xử lý nút "Đổi Giá (%)"."""
+        # Thay đổi giá hàng loạt
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Chọn sản phẩm", "Vui lòng chọn ít nhất một sản phẩm từ danh sách để thay đổi giá.", parent=self)
             return
         
-        # Import dialog mới
         from Features.doi_gia_dialog import PriceChangeDialog
         
         dialog = PriceChangeDialog(self, product_count=len(sel))
-        
         multiplier = dialog.result 
         
         if multiplier is None:
-            return # Người dùng đã Hủy
+            return 
             
         percent_str = f"{ (multiplier - 1) * 100:+.0f}%"
         
@@ -162,30 +156,16 @@ class SanPhamTab(tk.Frame):
             "Đơn giá mới sẽ được làm tròn đến hàng nghìn.", parent=self):
             return
         
-        # Lấy danh sách MaSP
         masp_list = []
         for item_id in sel:
             masp = self.tree.item(item_id, "values")[DISPLAY_COLS.index("MaSP")]
             masp_list.append(masp)
             
         try:
-            conn = get_connection()
-            cur = conn.cursor()
+            success, error = cap_nhat_gia_hang_loat(masp_list, multiplier)
             
-            # Tạo placeholders (?) cho danh sách MaSP
-            placeholders = ", ".join("?" for _ in masp_list)
-            # Làm tròn đến hàng nghìn
-            sql = f"""
-            UPDATE dbo.SanPhamNongDuoc
-            SET DonGia = ROUND((COALESCE(DonGia, 0) * ?) / 1000, 0) * 1000
-            WHERE MaSP IN ({placeholders})
-            """
-            
-            params = [multiplier] + masp_list
-            
-            cur.execute(sql, params)
-            conn.commit()
-            conn.close()
+            if error:
+                raise Exception(error)
             
             messagebox.showinfo("Thành công", f"Đã cập nhật giá cho {len(masp_list)} sản phẩm.", parent=self)
             self.load_data()
@@ -194,6 +174,7 @@ class SanPhamTab(tk.Frame):
             messagebox.showerror("Lỗi CSDL", f"Không thể cập nhật giá:\n{e}", parent=self)
 
     def _clear_filters(self):
+        # Xóa các bộ lọc và tải lại
         self.search.delete(0, "end")
         self.filter_loai.set("Tất cả")
         self.price_min.delete(0, "end")
@@ -202,6 +183,7 @@ class SanPhamTab(tk.Frame):
         self.load_data()
 
     def load_data(self):
+        # Tải/Tải lại dữ liệu từ CSDL
         conn = None
         try:
             conn = get_connection()
@@ -233,15 +215,13 @@ class SanPhamTab(tk.Frame):
                     where.append("COALESCE(DonGia, 0) >= ?")
                     params.append(int(price_min_str.replace(",", "")))
             except ValueError:
-                messagebox.showwarning("Lỗi", "Giá trị 'từ' phải là số.", parent=self)
-                return 
+                 pass 
             try:
                 if price_max_str:
                     where.append("COALESCE(DonGia, 0) <= ?")
                     params.append(int(price_max_str.replace(",", "")))
             except ValueError:
-                messagebox.showwarning("Lỗi", "Giá trị 'đến' phải là số.", parent=self)
-                return 
+                 pass 
             
             where_sql = (" WHERE " + " AND ".join(where)) if where else ""
             

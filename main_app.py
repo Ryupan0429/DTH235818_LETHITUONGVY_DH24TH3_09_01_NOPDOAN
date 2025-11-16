@@ -18,8 +18,8 @@ def open_main_admin(role, username):
     style_ttk(app) 
     
     app.title(f"Quản lý Nông Dược - {username} ({role})")
-    app.geometry("1300x700")
-    center(app, 1300, 700)
+    app.geometry("1400x700")
+    center(app, 1400, 700)
     app.configure(bg=BG_MAIN)
 
     header_frame = tk.Frame(app, bg=BG_TOOLBAR, height=40)
@@ -33,7 +33,6 @@ def open_main_admin(role, username):
                                kind="secondary")
     backup_btn.pack(side="left", padx=5)
 
-    # --- Khung bên phải (Đăng xuất) ---
     logout_frame = tk.Frame(header_frame, bg=BG_TOOLBAR)
     logout_frame.pack(side="right", padx=10, pady=5)
     
@@ -53,13 +52,11 @@ def open_main_admin(role, username):
     notebook = ttk.Notebook(app)
     notebook.pack(fill="both", expand=True, padx=5, pady=5)
 
-    # Load các tab
-    notebook.add(HoaDonTab(notebook, role, username), text="🧾 Hóa Đơn (Bán hàng)")
-    notebook.add(PhieuNhapTab(notebook, role, username), text="📦 Phiếu Nhập (Mua hàng)")
-    notebook.add(SanPhamTab(notebook, role), text="💊 Sản Phẩm")
-    notebook.add(KhachHangTab(notebook, role), text="👥 Khách Hàng")
-    
-    notebook.add(ThuChiTab(notebook, role), text="📊 Thu Chi")
+    notebook.add(HoaDonTab(notebook, username), text="🧾 Hóa Đơn (Bán hàng)")
+    notebook.add(PhieuNhapTab(notebook, username), text="📦 Phiếu Nhập (Mua hàng)")
+    notebook.add(SanPhamTab(notebook), text="💊 Sản Phẩm")
+    notebook.add(KhachHangTab(notebook), text="👥 Khách Hàng")
+    notebook.add(ThuChiTab(notebook), text="📊 Thu Chi")
 
     app.protocol("WM_DELETE_WINDOW", _handle_logout)
     app.mainloop()
