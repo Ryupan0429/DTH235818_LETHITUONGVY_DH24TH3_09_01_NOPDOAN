@@ -5,22 +5,7 @@ from tkcalendar import DateEntry
 from Modules.ui_style import center, FONT_NORMAL, create_button
 from Modules.utils import create_treeview_frame
 from Features.khach_hang_dialog import CustomerFormDialog
-
-def _next_mahd(conn):
-    cur = conn.cursor()
-    try:
-        cur.execute("SELECT MaHD FROM dbo.HoaDon WHERE MaHD LIKE 'HD%'")
-        rows = cur.fetchall()
-        nums = []
-        for r in rows:
-            s = str(r[0])
-            if s.upper().startswith("HD"):
-                num = ''.join(ch for ch in s[2:] if ch.isdigit())
-                if num: nums.append(int(num))
-        nxt = (max(nums)+1) if nums else 1
-        return f"HD{nxt:04d}"
-    except Exception:
-        return None
+from Modules.nghiep_vu_xu_ly import them_hoa_don
 
 class AddInvoiceDialog(tk.Toplevel):
     def __init__(self, parent, username):
@@ -287,42 +272,19 @@ class AddInvoiceDialog(tk.Toplevel):
         total_amount = self._update_total()
 
         try:
-            cur = self.conn.cursor()
-            
-            ma_hd = _next_mahd(self.conn)
-            if not ma_hd:
-                raise Exception("Không thể tạo Mã Hóa đơn.")
-
-            cur.execute(
-                "INSERT INTO dbo.HoaDon (MaHD, MaKH, NgayGD, TongGT) VALUES (?, ?, ?, ?)",
-                (ma_hd, ma_kh, ngay_gd, total_amount) 
+            ma_hd, error = them_hoa_don(
+                ma_kh=ma_kh,
+                ngay_gd=ngay_gd,
+                cart_items=self.cart_items,
+                total_amount=total_amount,
+                product_cache=self.product_data_cache
             )
 
-            items_to_insert = []
-            for masp, sl_gio in self.cart_items.items():
-                cache = self.product_data_cache[masp]
-                thanh_tien = cache["DonGia"] * sl_gio
-                items_to_insert.append((
-                    ma_hd,
-                    masp,
-                    cache["TenSP"],
-                    int(sl_gio),
-                    cache["DVTinh"],
-                    cache["DonGia"],
-                    thanh_tien
-                ))
-            
-            sql_insert_detail = """
-            INSERT INTO dbo.ChiTietHoaDon (MaHD, MaSP, TenSP, SoLuong, DVTinh, DonGia, ThanhTien)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """
-            cur.executemany(sql_insert_detail, items_to_insert)
+            if error:
+                raise Exception(error)
 
             messagebox.showinfo("Thành công", f"Đã tạo thành công hóa đơn {ma_hd}.", parent=self)
-
-            self.conn.commit()
             self.destroy()
 
         except Exception as e:
-            self.conn.rollback()
             messagebox.showerror("Lỗi CSDL", f"Không thể lưu hóa đơn:\n{e}", parent=self)

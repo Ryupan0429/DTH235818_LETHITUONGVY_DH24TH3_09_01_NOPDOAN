@@ -4,23 +4,7 @@ from db import get_connection
 from tkcalendar import DateEntry
 from Modules.ui_style import center, FONT_NORMAL, create_button
 from Modules.utils import create_treeview_frame
-
-def _next_sopn(conn):
-    """Tạo số phiếu nhập mới (ví dụ: PN0001)."""
-    cur = conn.cursor()
-    try:
-        cur.execute("SELECT SoPN FROM dbo.PhieuNhap WHERE SoPN LIKE 'PN%'")
-        rows = cur.fetchall()
-        nums = []
-        for r in rows:
-            s = str(r[0])
-            if s.upper().startswith("PN"):
-                num = ''.join(ch for ch in s[2:] if ch.isdigit())
-                if num: nums.append(int(num))
-        nxt = (max(nums)+1) if nums else 1
-        return f"PN{nxt:04d}"
-    except Exception:
-        return None
+from Modules.nghiep_vu_xu_ly import them_phieu_nhap
 
 class AddImportDialog(tk.Toplevel):
     def __init__(self, parent, username):
@@ -250,42 +234,20 @@ class AddImportDialog(tk.Toplevel):
         total_amount = self._update_total()
 
         try:
-            cur = self.conn.cursor()
-            
-            so_pn = _next_sopn(self.conn)
-            if not so_pn:
-                raise Exception("Không thể tạo Số Phiếu Nhập.")
-
-            cur.execute(
-                "INSERT INTO dbo.PhieuNhap (SoPN, NgayNhap, NguoiNhap, NguonNhap, TongGGT) VALUES (?, ?, ?, ?, ?)",
-                (so_pn, ngay_nhap, self.username, nguon_nhap, total_amount) 
+            so_pn, error = them_phieu_nhap(
+                nguoi_nhap=self.username,
+                nguon_nhap=nguon_nhap,
+                ngay_nhap=ngay_nhap,
+                cart_items=self.cart_items,
+                total_amount=total_amount,
+                product_cache=self.product_data_cache
             )
-
-            items_to_insert = []
-            for masp, (so_luong, don_gia_nhap) in self.cart_items.items():
-                cache = self.product_data_cache[masp]
-                thanh_tien = so_luong * don_gia_nhap
-                items_to_insert.append((
-                    so_pn,
-                    masp,
-                    cache["TenSP"],
-                    int(so_luong),
-                    cache["DVTinh"],
-                    don_gia_nhap,
-                    thanh_tien
-                ))
             
-            sql_insert_detail = """
-            INSERT INTO dbo.ChiTietPhieuNhap (SoPN, MaSP, TenSP, SoLuong, DVTinh, DonGia, ThanhTien)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """
-            cur.executemany(sql_insert_detail, items_to_insert)
+            if error:
+                raise Exception(error)
 
             messagebox.showinfo("Thành công", f"Đã tạo thành công phiếu nhập {so_pn}.\nKho và Giá bán đã được cập nhật.", parent=self)
-
-            self.conn.commit()
             self.destroy()
 
         except Exception as e:
-            self.conn.rollback()
             messagebox.showerror("Lỗi CSDL", f"Không thể lưu phiếu nhập:\n{e}", parent=self)

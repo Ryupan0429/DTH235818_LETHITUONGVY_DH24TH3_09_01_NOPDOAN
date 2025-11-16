@@ -7,6 +7,7 @@ from datetime import datetime, date
 from Modules.utils import create_treeview_frame, setup_sortable_treeview, reset_sort_headings
 from Features.chi_tiet import InvoiceDetailWindow 
 from Features.hoa_don_dialog import AddInvoiceDialog
+from Modules.nghiep_vu_xu_ly import xoa_hoa_don
 from Features.xuat_file import export_invoice_to_word
 
 # Cấu hình cột
@@ -88,7 +89,6 @@ class HoaDonTab(tk.Frame):
 
 
     def _delete_invoice(self):
-        """Xóa một hoặc nhiều hóa đơn. Trigger CSDL sẽ tự hoàn kho."""
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Xóa", "Vui lòng chọn ít nhất một hóa đơn để xóa.")
@@ -112,24 +112,17 @@ class HoaDonTab(tk.Frame):
             parent=self, icon='warning'):
             return
             
-        conn = None
         try:
-            conn = get_connection()
-            cur = conn.cursor()
+            success, error = xoa_hoa_don(mahd_list)
             
-            placeholders = ", ".join("?" for _ in mahd_list)
-            
-            cur.execute(f"DELETE FROM dbo.HoaDon WHERE MaHD IN ({placeholders})", mahd_list)
-            conn.commit()
+            if error:
+                raise Exception(error)
             
             messagebox.showinfo("Thành công", f"Đã xóa {len(mahd_list)} hóa đơn.\nĐã hoàn kho sản phẩm.", parent=self)
             self.load_data()
             
         except Exception as e:
-            conn.rollback()
             messagebox.showerror("Lỗi CSDL", f"Không thể xóa hóa đơn:\n{e}", parent=self)
-        finally:
-            if conn: conn.close()
 
     def clear_filters(self):
         self.search.delete(0, "end")

@@ -7,6 +7,7 @@ from datetime import datetime, date
 from Modules.utils import create_treeview_frame, setup_sortable_treeview, reset_sort_headings
 from Features.chi_tiet import InvoiceDetailWindow 
 from Features.phieu_nhap_dialog import AddImportDialog 
+from Modules.nghiep_vu_xu_ly import xoa_phieu_nhap
 from Features.xuat_file import export_import_bill_to_word
 
 VI_PHIEUNHAP = {
@@ -87,29 +88,36 @@ class PhieuNhapTab(tk.Frame):
         self.load_data()
 
     def _delete_import(self):
-        """Xóa phiếu nhập đang chọn. Trigger CSDL sẽ tự động TRỪ KHO."""
         sel = self.tree.selection()
         if not sel:
-            messagebox.showinfo("Xóa", "Vui lòng chọn phiếu nhập để xóa.")
+            messagebox.showinfo("Xóa", "Vui lòng chọn ít nhất một phiếu nhập để xóa.")
+            return
+            
+        sopn_list = []
+        for item_id in sel:
+            try:
+                sopn = self.tree.item(item_id, "values")[DISPLAY_COLS.index("SoPN")]
+                sopn_list.append(sopn)
+            except (ValueError, IndexError):
+                pass
+                
+        if not sopn_list:
+            messagebox.showerror("Lỗi", "Không thể tìm thấy Số Phiếu Nhập để xóa.")
+            return
+            
+        if not messagebox.askyesno("Xác nhận", 
+            f"Bạn có chắc muốn XÓA {len(sopn_list)} phiếu nhập đã chọn?\n\n"
+            "(CẢNH BÁO: Thao tác này sẽ tự động TRỪ KHỎI KHO số lượng sản phẩm đã nhập).", 
+            parent=self, icon='warning'):
             return
             
         try:
-            sopn = self.tree.item(sel[0], "values")[DISPLAY_COLS.index("SoPN")]
-        except (ValueError, IndexError):
-            messagebox.showerror("Lỗi", "Không thể tìm thấy Số Phiếu Nhập.")
-            return
+            success, error = xoa_phieu_nhap(sopn_list)
+
+            if error:
+                raise Exception(error)
             
-        if not messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn XÓA Phiếu Nhập {sopn}?\n\n(CẢNH BÁO: Thao tác này sẽ tự động TRỪ KHỎI KHO số lượng sản phẩm đã nhập).", parent=self):
-            return
-            
-        try:
-            conn = get_connection()
-            cur = conn.cursor()
-            cur.execute("DELETE FROM dbo.PhieuNhap WHERE SoPN = ?", (sopn,))
-            conn.commit()
-            conn.close()
-            
-            messagebox.showinfo("Thành công", f"Đã xóa phiếu nhập {sopn}.\nĐã trừ kho sản phẩm.", parent=self)
+            messagebox.showinfo("Thành công", f"Đã xóa {len(sopn_list)} phiếu nhập.\nĐã trừ kho sản phẩm.", parent=self)
             self.load_data()
             
         except Exception as e:
